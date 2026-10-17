@@ -170,8 +170,13 @@ input,select,textarea{background:#000!important;color:var(--fg)}
 @media (max-width:1300px){.play-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:700px){.play-grid{grid-template-columns:minmax(0,1fr)}.play-box{grid-column:auto!important}}
 .wrap{padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(40px,env(safe-area-inset-bottom,0px))}
-#tv-cal,#tv-quotes{height:900px}
-@media (max-width:700px){#tv-cal,#tv-quotes{height:720px}}
+.top3{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr);height:max(640px,calc(100vh - 190px))}
+.top3>.panel{min-height:0}
+.fill .tv{flex:1;min-height:0;height:auto!important}
+.fill-scroll{overflow-y:auto}
+.top3 .play-grid{grid-template-columns:minmax(0,1fr)!important}
+.top3 .play-box{grid-column:auto!important}
+@media (max-width:1150px){.top3{grid-template-columns:minmax(0,1fr);height:auto}.fill .tv{height:720px!important;flex:none}.fill-scroll{overflow:visible}}
 .cal-wrap{display:grid;gap:8px}
 .cal-wrap[hidden],[hidden]{display:none!important}
 .src-tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:6px;color:var(--muted)}
@@ -199,15 +204,6 @@ input,select,textarea{background:#000!important;color:var(--fg)}
 
   <div class="tape tradingview-widget-container" id="tv-tape"></div>
   <div id="next"></div>
-
-  <!-- 5 MINUTES BEFORE NEWS -->
-  <section class="panel play" id="play-panel" aria-labelledby="h-play">
-    <div class="panel-head">
-      <h2 id="h-play">Buy or sell gold · 5 minutes before high-impact news</h2>
-      <div class="conn"><span class="hint" id="play-stats"></span><button class="btn" id="btn-sound" aria-pressed="false">Sound alert off</button></div>
-    </div>
-    <div id="play"></div>
-  </section>
 
   <!-- NEWS SIGNAL + FUNDAMENTALS -->
   <div class="grid g-2">
@@ -245,9 +241,10 @@ input,select,textarea{background:#000!important;color:var(--fg)}
     </section>
   </div>
 
-  <!-- HIGH-IMPACT NEWS + MACRO -->
-  <div class="grid g-news">
-    <section class="panel" aria-labelledby="h-cal">
+
+  <!-- TOP: NEWS · BUY/SELL 5 MIN BEFORE · MACRO -->
+  <div class="grid top3">
+    <section class="panel fill" aria-labelledby="h-cal">
       <div class="panel-head"><h2 id="h-cal">High-impact US news</h2><span class="hint">US · Singapore time</span></div>
       <div id="cal-wrap" class="cal-wrap" hidden>
         <div class="panel-head"><p class="hint" id="cal-src"></p><label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="cal-med"> Include medium impact</label></div>
@@ -255,7 +252,14 @@ input,select,textarea{background:#000!important;color:var(--fg)}
       </div>
       <div class="tv tv-cal tradingview-widget-container" id="tv-cal"></div>
     </section>
-    <section class="panel">
+  <section class="panel play fill-scroll" id="play-panel" aria-labelledby="h-play">
+    <div class="panel-head">
+      <h2 id="h-play">Buy or sell gold · 5 minutes before high-impact news</h2>
+      <div class="conn"><span class="hint" id="play-stats"></span><button class="btn" id="btn-sound" aria-pressed="false">Sound alert off</button></div>
+    </div>
+    <div id="play"></div>
+  </section>
+    <section class="panel fill">
       <div class="panel-head"><h2>Macro quotes</h2><span class="hint">TradingView · live · yields, VIX, dollar</span></div>
       <div class="tv tv-quotes tradingview-widget-container" id="tv-quotes"></div>
     </section>
@@ -264,6 +268,22 @@ input,select,textarea{background:#000!important;color:var(--fg)}
 
 
 
+
+
+
+
+  <!-- MT5 LOGIN (official MetaQuotes Web Terminal) -->
+  <section class="panel" aria-labelledby="h-mt5">
+    <div class="panel-head">
+      <h2 id="h-mt5">MT5 login · official web terminal</h2>
+      <div class="conn">
+        <a class="btn" id="mt5-newtab" href="https://metatraderweb.app/trade?startup_version=5&amp;lang=en&amp;save_password=off" target="_blank" rel="noopener">Open in new tab</a>
+        <button class="btn primary" id="mt5-toggle" aria-expanded="false">Log in to MT5</button>
+      </div>
+    </div>
+    <p class="hint">This is MetaQuotes' own MT5 Web Terminal. Choose your CPT Markets server, enter account and password, and you can view and trade here. Your password goes straight to MetaQuotes; GoldDesk never sees or stores it. If the login box does not keep you signed in (Safari can block this inside pages), use Open in new tab.</p>
+    <div id="mt5-frame-wrap" hidden><div class="tv" style="height:max(640px,calc(100vh - 160px))" id="mt5-frame"></div></div>
+  </section>
 
   <!-- ACCOUNT -->
   <section class="panel" aria-labelledby="h-acct">
@@ -1178,7 +1198,7 @@ function renderCalArea(st){
   const c = calSource(st), wrap = $("#cal-wrap");
   if (!c){
     wrap.hidden = true;
-    $("#next").innerHTML = isPhone ? "" : `<span class="hint">Live countdown to the next high-impact release appears here once MT5 is connected. The TradingView calendar below shows the schedule now.</span>`;
+    $("#next").innerHTML = isPhone ? "" : `<span class="hint">Live countdown to the next high-impact release appears here once MT5 is connected. The High-impact US news calendar on the left shows the schedule now.</span>`;
     return;
   }
   wrap.hidden = false;
@@ -1252,8 +1272,8 @@ function renderPlay(st){
         <span>15-min range low</span><span class="mono">${fx(lo,dg)}</span><span class="neg">Sell stop below</span><span class="mono neg">${fx(lo - 0.5*a, dg)}</span></div>`;
     }
     $("#play").innerHTML = `<div class="play-grid">
-      <div class="play-box"><h3>Next high-impact release</h3><span class="big" style="font-size:20px">${c ? "None in the next days" : isPhone ? "See the calendar below" : "Connect MT5 for the countdown"}</span>
-        <span class="hint">${c ? "This panel switches to the 5-minute plan automatically before the next one." : isPhone ? "The High-impact US news calendar further down lists times in Singapore time. Check the Gold call here 5 minutes before a release." : "Without MT5 the schedule is in the TradingView calendar below. The 5-minute lean, countdown and sound alert need the MT5 calendar."}</span></div>
+      <div class="play-box"><h3>Next high-impact release</h3><span class="big" style="font-size:20px">${c ? "None in the next days" : isPhone ? "See the news calendar" : "Connect MT5 for the countdown"}</span>
+        <span class="hint">${c ? "This panel switches to the 5-minute plan automatically before the next one." : isPhone ? "The High-impact US news calendar lists times in Singapore time. Check the Gold call here 5 minutes before a release." : "Without MT5 the schedule is in the High-impact US news calendar on the left. The 5-minute lean, countdown and sound alert need the MT5 calendar."}</span></div>
       <div class="play-box" style="grid-column:span 2"><h3>Gold call now · economy + market</h3>${callBox(goldCall(st, cal))}</div>
       <div class="play-box"><h3>Breakout levels</h3>${lv0}<p class="hint">Before a release, trade the break of the 15-minute range after the first 1-minute candle closes.</p></div>
     </div>`;
@@ -1324,6 +1344,26 @@ function phoneAccountView(st){
   const tables = $("#acct-kpis").nextElementSibling; if (tables) tables.hidden = hide;
   $("#conn-pill").hidden = hide; $("#conn-time").hidden = hide;
 }
+
+/* ---------- MT5 web terminal (loads only when opened) ---------- */
+function mt5Url(){
+  const p = new URLSearchParams({ startup_version:"5", lang:"en", save_password:"off" });
+  if (MY && MY.login) p.set("login", String(MY.login));
+  return "https://metatraderweb.app/trade?" + p.toString();
+}
+$("#mt5-toggle").onclick = () => {
+  const wrap = $("#mt5-frame-wrap"), open = wrap.hidden;
+  wrap.hidden = !open;
+  $("#mt5-toggle").setAttribute("aria-expanded", open);
+  $("#mt5-toggle").textContent = open ? "Hide MT5 terminal" : "Log in to MT5";
+  if (open && !$("#mt5-frame iframe")){
+    const f = document.createElement("iframe");
+    f.src = mt5Url(); f.title = "MetaTrader 5 Web Terminal"; f.allow = "fullscreen; clipboard-write";
+    f.setAttribute("allowfullscreen", ""); f.style.cssText = "width:100%;height:100%;border:0;display:block";
+    $("#mt5-frame").appendChild(f);
+  }
+};
+$("#mt5-newtab").href = mt5Url();
 
 /* ---------- Live updates ---------- */
 function update(st){
