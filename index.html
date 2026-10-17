@@ -170,6 +170,8 @@ input,select,textarea{background:#000!important;color:var(--fg)}
 @media (max-width:1300px){.play-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:700px){.play-grid{grid-template-columns:minmax(0,1fr)}.play-box{grid-column:auto!important}}
 .wrap{padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(40px,env(safe-area-inset-bottom,0px))}
+#tv-cal,#tv-quotes{height:900px}
+@media (max-width:700px){#tv-cal,#tv-quotes{height:720px}}
 .cal-wrap{display:grid;gap:8px}
 .cal-wrap[hidden],[hidden]{display:none!important}
 .src-tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:6px;color:var(--muted)}
