@@ -1,0 +1,1458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GoldDesk XAU · BTC</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="GoldDesk">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: trading-terminal grid. Signal + next release on top, account strip, charts, then drivers and news. One dark look, bullion accent. */
+:root{
+  --bg:#000000; --panel:#0a0a0b; --panel-2:#121214; --line:#26262b; --fg:#e8e4da; --muted:#8c929c;
+  --gold:#d7a93d; --gold-soft:rgba(215,169,61,.14);
+  --up:#33c27a; --up-soft:rgba(51,194,122,.14); --down:#ec5b52; --down-soft:rgba(236,91,82,.14); --warn:#e6a23c; --warn-soft:rgba(230,162,60,.12);
+  --f-display:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--f-display);-webkit-font-smoothing:antialiased}
+a{color:var(--gold)}
+.wrap{max-width:1680px;margin:0 auto;padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.grid{display:grid;gap:16px}
+.g-main{grid-template-columns:minmax(0,1fr) 400px}
+.g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g-news{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.g-top{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+@media (max-width:1150px){.g-main,.g-2,.g-3,.g-news,.g-top{grid-template-columns:minmax(0,1fr)}}
+
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.brand h1 b{color:var(--gold)}
+.brand span{color:var(--muted);font-size:13px}
+.brand a{font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--line);border-radius:5px;padding:3px 10px}
+.brand a:hover{border-color:var(--gold)}
+.clock{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.clock b{color:var(--fg);font-family:var(--f-mono);font-weight:500}
+.session-on{color:var(--up)!important}
+.tape{height:46px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+
+.acct{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.kpi{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-family:var(--f-mono);font-size:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.pos{color:var(--up)} .neg{color:var(--down)}
+.conn{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--panel-2);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill.live::before{background:var(--up)} .pill.stale::before{background:var(--warn)} .pill.sample::before{background:var(--gold)}
+
+button,select,input{font:inherit;color:var(--fg)}
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:13px}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);color:#17130a;border-color:var(--gold)}
+.btn:focus-visible,select:focus-visible,input:focus-visible,.tabs button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+select,input[type=number],input[type=text],input[type=datetime-local]{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px 8px;min-width:0;width:100%}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;flex-wrap:wrap}
+.tabs button{background:transparent;border:0;padding:6px 14px;cursor:pointer;color:var(--muted);font-weight:600}
+.tabs button[aria-pressed=true]{background:var(--gold-soft);color:var(--gold)}
+.field{display:grid;gap:4px;min-width:0}
+.field[hidden]{display:none}
+.field label{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+
+.tv{border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--bg)}
+.tv-main{height:600px} .tv-mid{height:380px} .tv-ta{height:430px} .tv-cal{height:560px} .tv-feed{height:520px} .tv-quotes{height:470px} .tv-heat{height:560px}
+@media (max-width:700px){.tv-main{height:440px}}
+.notes{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:13px}
+.notes li{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.arrow{font-family:var(--f-mono);font-weight:600;min-width:2.2em}
+
+/* 5-minute signal */
+.signal{border-color:color-mix(in srgb,var(--gold) 45%,var(--line))}
+.sig-head{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.sig-word{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1;padding:8px 14px;border-radius:6px}
+.sig-word.buy{background:var(--up-soft);color:var(--up)} .sig-word.sell{background:var(--down-soft);color:var(--down)} .sig-word.flat{background:var(--panel-2);color:var(--muted);font-size:24px}
+.sig-meta{font-size:13px;line-height:1.4}
+.pill-score{font-size:13px;border:1px solid var(--line);border-radius:5px;padding:4px 8px;white-space:nowrap}
+.sig-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.sig-grid div{background:var(--panel-2);padding:8px 10px;display:grid;gap:2px;min-width:0}
+.sig-grid label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sig-grid span{font-size:16px}
+@media (max-width:520px){.sig-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sig-head{grid-template-columns:auto 1fr}.pill-score{grid-column:1/-1;justify-self:start}}
+.reasons{font-size:12.5px}
+.warnbox{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 50%,transparent);color:var(--warn);border-radius:5px;padding:8px 10px;font-size:13px;font-weight:600}
+.track{border-top:1px solid var(--line);padding-top:8px}
+.track b{color:var(--fg)}
+
+/* next release */
+.next{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2)}
+.next .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:100%}
+.next b{font-size:18px}
+.next .cd{font-size:18px;color:var(--gold);font-weight:600}
+.next.soon{border-color:var(--warn);background:var(--warn-soft)}
+.next.soon .cd{color:var(--warn)}
+
+/* bias */
+.meter{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--down) 0%,var(--panel-2) 45%,var(--panel-2) 55%,var(--up) 100%)}
+.meter i{position:absolute;top:-5px;width:4px;height:20px;border-radius:2px;background:var(--fg);transform:translateX(-50%);transition:left .3s}
+.meter-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.verdict{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.verdict .big{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.factors{display:grid;gap:8px}
+.factor{display:grid;grid-template-columns:minmax(0,1fr) 170px 34px;gap:8px;align-items:center;font-size:13px}
+.factor .sc{font-family:var(--f-mono);text-align:right}
+.factor .auto{display:block;font-size:11.5px;color:var(--muted)}
+.bias-tag{display:inline-block;padding:2px 9px;border-radius:4px;font-weight:700;font-size:12px;letter-spacing:.04em;white-space:nowrap}
+.bias-tag.buy{background:var(--up-soft);color:var(--up)} .bias-tag.sell{background:var(--down-soft);color:var(--down)} .bias-tag.flat{background:var(--panel-2);color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);vertical-align:middle}
+.dot.buy{background:var(--up)} .dot.sell{background:var(--down)}
+
+/* tables */
+.result{border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px;background:var(--panel-2)}
+.result .head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.result .big{font-size:20px;font-weight:800}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+td .hint{font-size:11.5px;white-space:normal}
+td.r,th.r{text-align:right}
+tr.sum td{border-bottom:0;padding-top:10px;font-weight:600}
+tr.now td{background:var(--gold-soft);color:var(--gold);font-weight:600}
+.tbl{overflow-x:auto}
+.empty{color:var(--muted);font-size:13px;padding:14px;text-align:center;border:1px dashed var(--line);border-radius:6px;white-space:normal}
+.cheat td{white-space:normal}
+.del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px}
+.del:hover{color:var(--down)}
+table.cal tr.day td{background:var(--panel-2);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:5px 8px}
+table.cal tr.past td{opacity:.72}
+table.cal tr.hi td.ev{font-weight:600}
+table.cal td.ev{white-space:normal;min-width:180px}
+.imp{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--warn)}
+.imp.i3{background:var(--down)}
+.cal-scroll{max-height:560px;overflow-y:auto}
+footer{color:var(--muted);font-size:12px;line-height:1.6}
+footer p{margin:0 0 6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+.act-in{width:110px!important;padding:3px 6px!important;font-family:var(--f-mono);font-size:12.5px}
+
+html{background:#000}
+option,optgroup{background:#000;color:var(--fg)}
+input,select,textarea{background:#000!important;color:var(--fg)}
+.tv{background:#000!important}
+.tv iframe{color-scheme:normal;background:transparent}
+
+.g-main{grid-template-columns:minmax(0,1fr) 380px}
+.factor{grid-template-columns:minmax(0,1fr) 150px 34px}
+@media (max-width:1150px){.g-main{grid-template-columns:minmax(0,1fr)}}
+.play.window{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
+.play-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:1300px){.play-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.play-grid{grid-template-columns:minmax(0,1fr)}.play-box{grid-column:auto!important}}
+.wrap{padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(40px,env(safe-area-inset-bottom,0px))}
+.top3{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr);height:max(640px,calc(100vh - 190px))}
+.top3>.panel{min-height:0}
+.fill .tv{flex:1;min-height:0;height:auto!important}
+.fill-scroll{overflow-y:auto}
+.top3 .play-grid{grid-template-columns:minmax(0,1fr)!important}
+.top3 .play-box{grid-column:auto!important}
+@media (max-width:1150px){.top3{grid-template-columns:minmax(0,1fr);height:auto}.fill .tv{height:720px!important;flex:none}.fill-scroll{overflow:visible}}
+#tv-ta{height:440px}
+#ta-panel:fullscreen{height:100vh;padding:16px;background:var(--bg)}
+#ta-panel:fullscreen #tv-ta{height:auto;flex:1}
+@media (max-width:900px){#tv-ta{height:460px}}
+.cal-wrap{display:grid;gap:8px}
+.cal-wrap[hidden],[hidden]{display:none!important}
+.src-tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:6px;color:var(--muted)}
+.src-tag.eco{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 40%,var(--line))}
+.play-box{border:1px solid var(--line);border-radius:6px;padding:12px;background:var(--panel-2);display:grid;gap:8px;align-content:start;min-width:0}
+.play-box h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.play-box .big{font-size:26px;font-weight:800;line-height:1.1}
+.lvl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.lvl .mono{text-align:right}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"><h1>Gold<b>Desk</b></h1><span id="brand-sub">XAUUSD · BTCUSD · MT5</span></div>
+    <div class="clock">
+      <div>Singapore <b id="clk-sg">--:--</b></div>
+      <div>New York <b id="clk-ny">--:--</b></div>
+      <div>London <b id="clk-ldn">--:--</b></div>
+      <div>Session <b id="clk-sess">--</b></div>
+    </div>
+  </header>
+
+  <div class="tape tradingview-widget-container" id="tv-tape"></div>
+  <div id="next"></div>
+
+  <!-- NEWS SIGNAL + FUNDAMENTALS -->
+  <div class="grid g-2">
+    <section class="panel" aria-labelledby="h-calc">
+      <div class="panel-head"><h2 id="h-calc">News impact → gold signal</h2><span class="hint">Before release: forecast + previous · After: add actual</span></div>
+      <div class="row">
+        <div class="field"><label for="ev">Event</label><select id="ev"></select></div>
+        <div class="field"><label for="ev-fc">Forecast <span class="ev-unit"></span></label><input type="text" inputmode="decimal" autocomplete="off" id="ev-fc" value="150K"></div>
+        <div class="field"><label for="ev-prev">Previous <span class="ev-unit"></span></label><input type="text" inputmode="decimal" autocomplete="off" id="ev-prev" value="142K"></div>
+        <div class="field"><label for="ev-act">Actual <span class="ev-unit"></span></label><input type="text" inputmode="decimal" autocomplete="off" id="ev-act" placeholder="Blank before release"></div>
+        <div class="field" id="tone-wrap" hidden><label for="ev-tone">Powell / statement tone</label>
+          <select id="ev-tone"><option value="1">Hawkish</option><option value="0" selected>Neutral</option><option value="-1">Dovish</option></select></div>
+      </div>
+      <div class="result" id="ev-result"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="ev-save">Log this result</button>
+        <button class="btn" id="ev-use">Send to bias scorecard</button>
+      </div>
+      <div style="display:grid;gap:6px"><h2>Logged releases</h2><div class="tbl"><table id="tbl-ev"></table></div></div>
+      <details>
+        <summary class="hint" style="cursor:pointer">How the signal is worked out</summary>
+        <div class="tbl" style="margin-top:8px"><table class="cheat" id="tbl-rules"></table></div>
+        <p class="hint" style="margin-top:8px">The first 1–5 minute spike often reverses. Spreads on CPT Markets widen around NFP, CPI and FOMC, so stops placed tight before the release can be hit by spread alone. Revisions to the previous figure and the details (wages for NFP, core for CPI) can flip the headline reaction.</p>
+      </details>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>XAUUSD fundamentals · live drivers</h2><span class="hint" id="fund-src"></span></div>
+      <div id="fund-sum"></div>
+      <div id="fund"></div>
+      <ul class="notes">
+        <li><span class="arrow neg">Yields ▲</span><span>Higher US real yields raise the cost of holding gold. Rising 10Y with a rising dollar is the most bearish mix.</span></li>
+        <li><span class="arrow pos">Fed cuts</span><span>Rate-cut expectations weaken the dollar and lift gold. Hawkish surprises do the opposite.</span></li>
+        <li><span class="arrow pos">Risk-off</span><span>Sharp stock selloffs, wars and tariff shocks bring safe-haven buying into gold.</span></li>
+        <li><span class="arrow pos">Central banks</span><span>Steady central-bank and ETF buying supports dips over weeks, not minutes.</span></li>
+      </ul>
+    </section>
+  </div>
+
+
+  <!-- TOP: NEWS · BUY/SELL 5 MIN BEFORE · MACRO -->
+  <div class="grid top3">
+    <section class="panel fill" aria-labelledby="h-cal">
+      <div class="panel-head"><h2 id="h-cal">High-impact US news</h2><span class="hint">US · Singapore time</span></div>
+      <div id="cal-wrap" class="cal-wrap" hidden>
+        <div class="panel-head"><p class="hint" id="cal-src"></p><label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="cal-med"> Include medium impact</label></div>
+        <div class="cal-scroll" id="cal" style="max-height:320px"></div>
+      </div>
+      <div class="tv tv-cal tradingview-widget-container" id="tv-cal"></div>
+    </section>
+  <section class="panel play fill-scroll" id="play-panel" aria-labelledby="h-play">
+    <div class="panel-head">
+      <h2 id="h-play">Buy or sell gold · 5 minutes before high-impact news</h2>
+      <div class="conn"><span class="hint" id="play-stats"></span><button class="btn" id="btn-sound" aria-pressed="false">Sound alert off</button></div>
+    </div>
+    <div id="play"></div>
+  </section>
+    <section class="panel fill">
+      <div class="panel-head"><h2>Macro quotes</h2><span class="hint">TradingView · live · yields, VIX, dollar</span></div>
+      <div class="tv tv-quotes tradingview-widget-container" id="tv-quotes"></div>
+    </section>
+  </div>
+
+
+
+
+
+
+
+
+  <!-- MT5 LOGIN (official MetaQuotes Web Terminal) -->
+  <section class="panel" aria-labelledby="h-mt5">
+    <div class="panel-head">
+      <h2 id="h-mt5">MT5 login · official web terminal</h2>
+      <div class="conn">
+        <a class="btn" id="mt5-newtab" href="https://metatraderweb.app/trade?startup_version=5&amp;lang=en&amp;save_password=off" target="_blank" rel="noopener">Open in new tab</a>
+        <button class="btn primary" id="mt5-toggle" aria-expanded="false">Log in to MT5</button>
+      </div>
+    </div>
+    <p class="hint">This is MetaQuotes' own MT5 Web Terminal. Choose your CPT Markets server, enter account and password, and you can view and trade here. Your password goes straight to MetaQuotes; GoldDesk never sees or stores it. If the login box does not keep you signed in (Safari can block this inside pages), use Open in new tab.</p>
+    <div id="mt5-frame-wrap" hidden><div class="tv" style="height:max(640px,calc(100vh - 160px))" id="mt5-frame"></div></div>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section class="panel" aria-labelledby="h-acct">
+    <div class="panel-head">
+      <h2 id="h-acct">MT5 account · <span id="acct-id" class="mono" style="letter-spacing:0;text-transform:none;color:var(--fg)">sample</span></h2>
+      <div class="conn">
+        <span class="pill sample" id="conn-pill">Sample data</span>
+        <span class="hint" id="conn-time"></span>
+        <button class="btn primary" id="btn-connect">Connect MT5 file</button>
+        <button class="btn" id="btn-reconnect" hidden>Reconnect</button>
+        <input type="file" id="file-in" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <div class="warnbox" id="acct-warn" hidden></div>
+    <div class="acct" id="acct-kpis"></div>
+    <div class="grid g-2">
+      <div style="min-width:0;display:grid;gap:8px;align-content:start"><h2>Open positions</h2><div class="tbl"><table id="tbl-pos"></table></div></div>
+      <div style="min-width:0;display:grid;gap:8px;align-content:start"><h2>Recent closed trades</h2><div class="tbl" style="max-height:260px;overflow-y:auto"><table id="tbl-hist"></table></div></div>
+    </div>
+  </section>
+
+
+  <!-- MAIN CHART + BIAS -->
+  <div class="grid g-main">
+    <section class="panel">
+      <div class="panel-head">
+        <div class="tabs" role="group" aria-label="Main chart symbol">
+          <button id="sym-xau" aria-pressed="true">XAUUSD</button>
+          <button id="sym-btc" aria-pressed="false">BTCUSD</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label class="hint" for="sel-feed">Feed</label><select id="sel-feed" style="width:auto"></select>
+          <label class="hint" for="sel-tf">TF</label>
+          <select id="sel-tf" style="width:auto"><option value="5">M5</option><option value="15" selected>M15</option><option value="60">H1</option><option value="240">H4</option><option value="D">D1</option></select>
+        </div>
+      </div>
+      <div class="tv tv-main tradingview-widget-container" id="tv-main"></div>
+      <div class="panel-head" style="border-top:1px solid var(--line);padding-top:10px">
+        <div class="field" style="flex:1;min-width:220px"><label for="tv-layout">My TradingView chart link (with EMA Mastermind Gold)</label><input type="text" id="tv-layout" placeholder="https://www.tradingview.com/chart/xxxxxxxx/"></div>
+        <a class="btn primary" id="tv-open" href="https://www.tradingview.com/chart/?symbol=OANDA%3AXAUUSD" target="_blank" rel="noopener">Open my chart in TradingView</a>
+      </div>
+      <p class="hint">TradingView only allows its built-in indicators inside other pages, so your own strategy opens on your TradingView chart with the button above. Paste your chart's link once and it is remembered.</p>
+      <p class="hint">TradingView prices come from the selected feed (OANDA by default). CPT Markets quotes in MT5 can differ by a few points, so place entries, stops and targets from your MT5 price.</p>
+    </section>
+
+    <aside class="grid" style="gap:16px;align-content:start">
+      <section class="panel" aria-labelledby="h-bias">
+        <div class="panel-head"><h2 id="h-bias">Gold bias scorecard</h2><span class="hint">Set each driver</span></div>
+        <div class="verdict"><span class="big" id="bias-word">Neutral</span><span class="mono" id="bias-score">0</span></div>
+        <div class="meter"><i id="bias-needle" style="left:50%"></i></div>
+        <div class="meter-scale"><span>-10 sell</span><span>0</span><span>buy +10</span></div>
+        <div class="factors" id="factors"></div>
+        <div class="verdict" style="border-top:1px solid var(--line);padding-top:10px">
+          <span>BTCUSD lean from the same drivers</span><span id="btc-lean" class="bias-tag flat">NEUTRAL</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- TECHNICAL GAUGE (full width) -->
+  <section class="panel" id="ta-panel">
+    <div class="panel-head"><h2>Technical gauge · oscillators, summary, moving averages</h2>
+      <div class="conn"><span class="hint" id="ta-label">XAUUSD</span><button class="btn primary" id="ta-full">Full screen</button></div></div>
+    <div class="tv tradingview-widget-container" id="tv-ta"></div>
+  </section>
+
+  <!-- TECHNICAL -->
+  <div class="grid g-2">
+    <section class="panel">
+      <div class="panel-head"><h2>XAUUSD technicals</h2><span class="hint" id="tech-src"></span></div>
+      <div id="tech"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>XAUUSD key levels</h2><span class="hint" id="lv-src">Daily pivots from yesterday's candle</span></div>
+      <div id="levels"></div>
+    </section>
+  </div>
+
+
+  <!-- DXY + OIL -->
+  <div class="grid g-2">
+    <section class="panel">
+      <div class="panel-head"><h2>DXY · US Dollar Index</h2><span class="bias-tag sell">Inverse to gold</span></div>
+      <div class="tv tv-mid tradingview-widget-container" id="tv-dxy"></div>
+      <ul class="notes">
+        <li><span class="arrow neg">DXY ▲</span><span>Stronger dollar makes gold more expensive abroad. Gold usually falls.</span></li>
+        <li><span class="arrow pos">DXY ▼</span><span>Weaker dollar usually lifts gold. Watch DXY breaking its prior day high or low as confirmation.</span></li>
+        <li><span class="arrow" style="color:var(--warn)">Both ▲</span><span>Gold and DXY rising together signals fear-driven safe-haven buying. Treat gold dips as buyable.</span></li>
+      </ul>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>USOIL · WTI crude</h2><span class="bias-tag buy">Inflation & risk gauge</span></div>
+      <div class="tv tv-mid tradingview-widget-container" id="tv-oil"></div>
+      <ul class="notes">
+        <li><span class="arrow pos">Oil spike</span><span>Supply shock or Middle East / Russia tension. Raises inflation fears and safe-haven demand. Supportive for gold.</span></li>
+        <li><span class="arrow neg">Oil slump</span><span>Lower inflation expectations. Mildly bearish gold, unless the drop comes from recession fear.</span></li>
+        <li><span class="arrow" style="color:var(--warn)">Watch</span><span>EIA inventories (Wednesday, US time), OPEC+ meetings, sanctions headlines and Trump posts about oil prices or OPEC.</span></li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- TRUMP + HEADLINES -->
+  <div class="grid g-2">
+
+    <section class="panel" aria-labelledby="h-trump">
+      <div class="panel-head"><h2 id="h-trump">Trump & geopolitics alerts</h2>
+        <span class="hint"><a href="https://truthsocial.com/@realDonaldTrump" target="_blank" rel="noopener">Truth Social</a> · <a href="https://www.whitehouse.gov/presidential-actions/" target="_blank" rel="noopener">White House actions</a></span></div>
+      <div class="row">
+        <div class="field" style="grid-column:1/-1"><label for="tr-text">Headline</label><input type="text" id="tr-text" placeholder="e.g. New tariffs announced on EU imports"></div>
+        <div class="field"><label for="tr-cat">Type</label><select id="tr-cat"></select></div>
+        <div class="field"><label for="tr-time">Time</label><input type="datetime-local" id="tr-time"></div>
+      </div>
+      <div class="result" id="tr-preview"></div>
+      <div><button class="btn primary" id="tr-add">Add alert</button></div>
+      <div class="tbl"><table id="tbl-tr"></table></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Live headlines</h2><span class="hint">TradingView news</span></div>
+      <div class="tv tv-feed tradingview-widget-container" id="tv-feed"></div>
+    </section>
+  </div>
+
+  <!-- RISK -->
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-risk">
+      <div class="panel-head"><h2 id="h-risk">Lot size calculator</h2></div>
+      <div class="row">
+        <div class="field"><label for="rk-sym">Symbol</label><select id="rk-sym"><option value="XAUUSD">XAUUSD</option><option value="BTCUSD">BTCUSD</option></select></div>
+        <div class="field"><label for="rk-cs">Contract size</label><input type="number" step="any" id="rk-cs" value="100"></div>
+        <div class="field"><label for="rk-bal">Account balance</label><input type="number" step="any" id="rk-bal" value="10000"></div>
+        <div class="field"><label for="rk-pct">Risk %</label><input type="number" step="0.1" id="rk-pct" value="1"></div>
+        <div class="field"><label for="rk-entry">Entry price</label><input type="number" step="any" id="rk-entry"></div>
+        <div class="field"><label for="rk-sl">Stop loss price</label><input type="number" step="any" id="rk-sl"></div>
+        <div class="field"><label for="rk-tp">Take profit price</label><input type="number" step="any" id="rk-tp"></div>
+      </div>
+      <div class="acct" id="rk-out"></div>
+      <p class="hint">Entry fills with your current MT5 price; stop and target start at 1× and 2× the H1 ATR. Contract size fills from MT5 when connected.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p><b>Connecting MT5:</b> attach <span class="mono">GoldDesk_Exporter</span> to any one chart in your CPT Markets MT5. It only reads data and writes <span class="mono">golddesk_account.json</span> into <span class="mono">%APPDATA%\MetaQuotes\Terminal\Common\Files</span> every 2 seconds. Click <b>Connect MT5 file</b> and pick that file once; in Chrome or Edge everything then refreshes on its own.</p>
+    <p>Signals here are rule-based guides from typical market reactions, not trade instructions or financial advice. Confirm with price action and size positions so a news spike cannot hurt the account.</p>
+  </footer>
+</div>
+
+<script>
+/* GoldDesk shared engine: MT5 link, indicators, 5-minute signal, live calendar */
+const GD = (() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("golddesk:"+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("golddesk:"+k, JSON.stringify(v)); }catch(e){} }
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fx = (v, d=2) => (v == null || isNaN(v)) ? "—" : (+v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const money = (v, cur) => (v < 0 ? "-" : "") + (cur === "USD" || !cur ? "$" : "") + fx(Math.abs(+v), 2) + (cur && cur !== "USD" ? " " + cur : "");
+const signed = (v, cur) => (v > 0 ? "+" : "") + money(v, cur);
+const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const tagCls = d => d > 0 ? "buy" : d < 0 ? "sell" : "flat";
+const nowS = () => Date.now() / 1000;
+const sg = (t, o) => new Date(t*1000).toLocaleString("en-GB", Object.assign({timeZone:"Asia/Singapore"}, o || {hour:"2-digit", minute:"2-digit"}));
+function dur(sec){
+  const s = Math.max(0, Math.round(Math.abs(sec)));
+  const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60), x = s%60;
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m ${String(x).padStart(2,"0")}s`;
+}
+
+/* ---------------- TradingView ---------------- */
+function tv(id, name, cfg){
+  const el = document.getElementById(id); if (!el) return;
+  el.innerHTML = '<div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>';
+  const s = document.createElement("script");
+  s.src = "https://s3.tradingview.com/external-embedding/embed-widget-" + name + ".js";
+  s.async = true; s.textContent = JSON.stringify(cfg); el.appendChild(s);
+}
+const TVB = { locale:"en", colorTheme:"dark", isTransparent:false, backgroundColor:"#000000" };
+function chartCfg(symbol, interval, extra){
+  return Object.assign({ autosize:true, symbol, interval, timezone:"Asia/Singapore", theme:"dark", style:"1", locale:"en",
+    backgroundColor:"#000000", gridColor:"rgba(40,40,46,0.6)", toolbar_bg:"#000000", allow_symbol_change:true, calendar:false,
+    support_host:"https://www.tradingview.com" }, extra || {});
+}
+
+/* ---------------- Clock ---------------- */
+function clock(){
+  const now = new Date();
+  const f = tz => now.toLocaleTimeString("en-GB",{timeZone:tz,hour:"2-digit",minute:"2-digit"});
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set("clk-sg", f("Asia/Singapore")); set("clk-ny", f("America/New_York")); set("clk-ldn", f("Europe/London"));
+  const h = tz => +now.toLocaleString("en-GB",{timeZone:tz,hour:"2-digit",hour12:false}).slice(0,2);
+  const ldn = h("Europe/London"), ny = h("America/New_York"), tk = h("Asia/Tokyo");
+  const day = now.toLocaleDateString("en-US",{timeZone:"America/New_York",weekday:"short"});
+  let s = [];
+  if (day === "Sat" || (day === "Sun" && ny < 18) || (day === "Fri" && ny >= 17)) s = ["Weekend · markets closed"];
+  else {
+    if (tk >= 9 && tk < 18) s.push("Tokyo");
+    if (ldn >= 8 && ldn < 17) s.push("London");
+    if (ny >= 8 && ny < 17) s.push("New York");
+    if (!s.length) s.push("Quiet");
+    if (ldn >= 8 && ldn < 17 && ny >= 8 && ny < 17) s = ["London + NY overlap"];
+  }
+  set("clk-sess", s.join(" · "));
+  const e = document.getElementById("clk-sess"); if (e) e.classList.toggle("session-on", /overlap/.test(s[0]));
+}
+
+/* ---------------- Indicators (bars = [t,o,h,l,c]) ---------------- */
+const closes = b => b.map(x => x[4]);
+function ema(v, n){ const k = 2/(n+1), o = []; let e; v.forEach((x,i) => { e = i ? x*k + e*(1-k) : x; o.push(e); }); return o; }
+function rsi(c, n=14){
+  const o = new Array(c.length).fill(null); let g = 0, l = 0;
+  for (let i = 1; i < c.length; i++){
+    const d = c[i]-c[i-1], up = Math.max(d,0), dn = Math.max(-d,0);
+    if (i <= n){ g += up; l += dn; if (i === n){ g /= n; l /= n; o[i] = l === 0 ? 100 : 100 - 100/(1+g/l); } }
+    else { g = (g*(n-1)+up)/n; l = (l*(n-1)+dn)/n; o[i] = l === 0 ? 100 : 100 - 100/(1+g/l); }
+  }
+  return o;
+}
+function atr(b, n=14){
+  const tr = b.map((x,i) => i ? Math.max(x[2]-x[3], Math.abs(x[2]-b[i-1][4]), Math.abs(x[3]-b[i-1][4])) : x[2]-x[3]);
+  const o = []; let a = 0;
+  tr.forEach((t,i) => { if (i < n){ a += t; o.push(i === n-1 ? (a /= n) : null); } else { a = (a*(n-1)+t)/n; o.push(a); } });
+  return o;
+}
+function macd(c){ const f = ema(c,12), s = ema(c,26); const m = f.map((x,i) => x - s[i]); const sig = ema(m,9); return { m, sig, h: m.map((x,i) => x - sig[i]) }; }
+function boll(c, n=20, k=2){ const w = c.slice(-n); const m = w.reduce((a,b)=>a+b,0)/w.length; const sd = Math.sqrt(w.reduce((a,b)=>a+(b-m)**2,0)/w.length); return { mid:m, up:m+k*sd, lo:m-k*sd }; }
+
+function tech(bars, digits=2){
+  if (!bars || bars.length < 35) return null;
+  const c = closes(bars), p = c.at(-1), rows = [];
+  const add = (name, val, sig, note) => rows.push({ name, val, sig, note });
+  for (const n of [20, 50, 200]){
+    if (c.length < n + 5) continue;
+    const e = ema(c, n).at(-1);
+    add(`EMA ${n}`, fx(e, digits), p > e ? 1 : -1, p > e ? "Price above" : "Price below");
+  }
+  const e20 = ema(c,20), e50 = ema(c,50);
+  if (c.length > 55) add("EMA 20 / 50", e20.at(-1) > e50.at(-1) ? "20 > 50" : "20 < 50", e20.at(-1) > e50.at(-1) ? 1 : -1, "Trend direction");
+  const r = rsi(c,14).at(-1);
+  add("RSI 14", fx(r,1), r >= 75 ? 0 : r > 55 ? 1 : r <= 25 ? 0 : r < 45 ? -1 : 0,
+      r >= 75 ? "Overbought, pullback risk" : r <= 25 ? "Oversold, bounce risk" : r > 55 ? "Bullish momentum" : r < 45 ? "Bearish momentum" : "Neutral");
+  const m = macd(c), h = m.h.at(-1), hp = m.h.at(-2);
+  add("MACD 12/26/9", fx(h, digits), h > 0 && h >= hp ? 1 : h < 0 && h <= hp ? -1 : 0,
+      h > 0 ? (h >= hp ? "Above signal, rising" : "Above signal, fading") : (h <= hp ? "Below signal, falling" : "Below signal, fading"));
+  const b = boll(c);
+  const pb = (p - b.lo) / ((b.up - b.lo) || 1);
+  add("Bollinger 20,2", `${fx(pb*100,0)}%B`, pb > 1 ? 0 : pb > 0.6 ? 1 : pb < 0 ? 0 : pb < 0.4 ? -1 : 0,
+      pb > 1 ? "Above upper band, stretched" : pb < 0 ? "Below lower band, stretched" : pb > 0.6 ? "Upper half" : pb < 0.4 ? "Lower half" : "Mid band");
+  const a = atr(bars,14).at(-1);
+  add("ATR 14", fx(a, digits), 0, "Typical candle range");
+  const score = rows.reduce((t,x) => t + x.sig, 0), max = rows.filter(x => x.name !== "ATR 14").length;
+  return { rows, score, max, word: verdict(score, max), atr: a, price: p };
+}
+function verdict(score, max){
+  const r = score / (max || 1);
+  return r >= 0.6 ? ["Strong buy", 2] : r >= 0.25 ? ["Buy", 1] : r <= -0.6 ? ["Strong sell", -2] : r <= -0.25 ? ["Sell", -1] : ["Neutral", 0];
+}
+function pivots(s){
+  const d = s && s.d1; if (!d || d.length < 2) return null;
+  const y = d.at(-2), t = d.at(-1);
+  const P = (y[2] + y[3] + y[4]) / 3, R = y[2] - y[3];
+  return { P, R1: 2*P - y[3], S1: 2*P - y[2], R2: P + R, S2: P - R, R3: y[2] + 2*(P - y[3]), S3: y[3] - 2*(y[2] - P),
+           PDH: y[2], PDL: y[3], TDH: t[2], TDL: t[3] };
+}
+
+/* ---------------- Economic calendar rules ---------------- */
+/* dir +1: a number above forecast is USD-positive (bearish gold). kind decides how stock indices react. */
+const RULES = [
+  [/adp/i,                                   { dir: 1, kind:"labor",  mode:"rel", th:[0.20,0.50] }],
+  [/non-?farm/i,                             { dir: 1, kind:"labor",  mode:"rel", th:[0.15,0.40] }],
+  [/unemployment rate/i,                     { dir:-1, kind:"labor",  mode:"abs", th:[0.1,0.2] }],
+  [/jobless claims|unemployment claims/i,                        { dir:-1, kind:"labor",  mode:"rel", th:[0.03,0.08] }],
+  [/average hourly earnings/i,               { dir: 1, kind:"infl",   mode:"abs", th:[0.1,0.2] }],
+  [/\bcpi\b|consumer price/i,                { dir: 1, kind:"infl",   mode:"abs", th:[0.1,0.2] }],
+  [/\bppi\b|producer price/i,                { dir: 1, kind:"infl",   mode:"abs", th:[0.1,0.3] }],
+  [/\bpce\b/i,                               { dir: 1, kind:"infl",   mode:"abs", th:[0.1,0.2] }],
+  [/interest rate decision|federal funds|fed rate|fomc/i, { dir: 1, kind:"fed", mode:"abs", th:[0.01,0.25] }],
+  [/\bgdp\b/i,                               { dir: 1, kind:"growth", mode:"abs", th:[0.3,0.8] }],
+  [/retail sales/i,                          { dir: 1, kind:"growth", mode:"abs", th:[0.3,0.8] }],
+  [/\bism\b|\bpmi\b/i,                       { dir: 1, kind:"growth", mode:"abs", th:[1,3] }],
+  [/jolts/i,                                 { dir: 1, kind:"labor",  mode:"rel", th:[0.03,0.08] }],
+  [/michigan|consumer confidence|sentiment/i,{ dir: 1, kind:"growth", mode:"rel", th:[0.03,0.08] }],
+  [/durable goods/i,                         { dir: 1, kind:"growth", mode:"abs", th:[0.5,1.5] }]
+];
+function ruleFor(e){
+  for (const [re, r] of RULES) if (re.test(e.name)) {
+    const x = Object.assign({}, r);
+    if (x.mode === "abs" && e.unit !== "%" && x.kind !== "growth") { x.mode = "rel"; x.th = [0.02, 0.06]; }
+    if (x.mode === "abs" && x.kind === "growth" && e.unit !== "%" && !/ism|pmi/i.test(e.name)) { x.mode = "rel"; x.th = [0.02, 0.06]; }
+    return x;
+  }
+  return null;
+}
+/* returns {usd:-2..2, strength, gold:"BUY"|"SELL"|"WAIT", idx:-1|0|1, why} */
+function judge(e){
+  if (e.act == null || e.fc == null) return null;
+  const r = ruleFor(e);
+  const dev = e.act - e.fc;
+  let strength, usd;
+  if (r){
+    const size = r.mode === "abs" ? Math.abs(dev) : Math.abs(dev) / Math.max(Math.abs(e.fc), 1e-9);
+    strength = size >= r.th[1] ? 2 : size >= r.th[0] ? 1 : 0;
+    usd = strength ? Math.sign(dev) * r.dir * strength : 0;
+  } else if (e.impact){
+    strength = 1; usd = e.impact;    // MetaQuotes' own read for USD
+  } else return null;
+  const kind = r ? r.kind : "growth";
+  const idx = usd === 0 ? 0 : (kind === "infl" || kind === "fed") ? -Math.sign(usd) : (strength === 2 ? -Math.sign(usd) : 0);
+  return { usd, strength, gold: usd > 0 ? "SELL" : usd < 0 ? "BUY" : "WAIT", idx, dev, kind };
+}
+function preGuide(e){
+  const r = ruleFor(e);
+  if (!r) return "";
+  return r.dir > 0 ? "Above fcst → SELL gold · Below → BUY" : "Above fcst → BUY gold · Below → SELL";
+}
+function fmtVal(e, v){ if (v == null) return "—"; return fx(v, Math.min(e.digits ?? 1, 3)) + (e.mult || "") + (e.unit || ""); }
+
+/* ---------------- Sample data (shown until MT5 connects) ---------------- */
+function rng(seed){ let s = seed; return () => (s = (s * 16807) % 2147483647, (s - 1) / 2147483646); }
+function synth(base, vol, digits, seed){
+  const r = rng(seed), N = 9 * 24 * 60, end = Math.floor(nowS() / 60) * 60, m = [];
+  let p = base;
+  for (let i = 0; i < N; i++){
+    const t = end - (N - 1 - i) * 60, o = p; let h = o, l = o;
+    for (let k = 0; k < 4; k++){ p += (r() - 0.5) * vol + Math.sin(i / 70 + seed) * vol * 0.06; h = Math.max(h, p); l = Math.min(l, p); }
+    m.push([t, o, h, l, p]);
+  }
+  const R = v => +v.toFixed(digits);
+  const agg = sec => { const out = []; for (const b of m){ const t = Math.floor(b[0]/sec)*sec, L = out[out.length-1];
+    if (L && L[0] === t){ L[2] = Math.max(L[2], b[2]); L[3] = Math.min(L[3], b[3]); L[4] = b[4]; } else out.push([t, b[1], b[2], b[3], b[4]]); }
+    return out.map(x => [x[0], R(x[1]), R(x[2]), R(x[3]), R(x[4])]); };
+  return { m1: agg(60).slice(-150), m5: agg(300).slice(-150), h1: agg(3600).slice(-220), d1: agg(86400).slice(-10) };
+}
+const SAMPLE_SYMS = {
+  XAUUSD: [4200, 1.6, 2, 0.30, 11], BTCUSD: [110000, 70, 2, 20, 23], US500: [6700, 1.8, 2, 0.5, 37],
+  NAS100: [24800, 8, 2, 1.5, 41], USDX: [99, 0.008, 3, 0.02, 53], USOIL: [62, 0.03, 2, 0.03, 67]
+};
+function sample(){
+  const symbols = {};
+  for (const [k, [base, vol, dg, spr, seed]] of Object.entries(SAMPLE_SYMS)){
+    const b = synth(base, vol, dg, seed), last = b.m1.at(-1)[4];
+    symbols[k] = Object.assign({ sym:k, digits:dg, bid:+(last - spr/2).toFixed(dg), ask:+(last + spr/2).toFixed(dg), tick:nowS(), contract:k === "XAUUSD" ? 100 : 1 }, b);
+  }
+  const xp = symbols.XAUUSD.bid, bp = symbols.BTCUSD.bid;
+  return {
+    sample:true, login:0, company:"CPT Markets", server:"sample", currency:"USD", leverage:500,
+    balance:10000, equity:10142.6, margin:528.4, free_margin:9614.2, margin_level:1919.5, floating:142.6, open_count:2, open_lots:0.30,
+    today:{pl:86.4,trades:3,wins:2,losses:1,lots:0.4}, week:{pl:312.75,trades:11,wins:7,losses:4,lots:1.6}, month:{pl:-58.2,trades:34,wins:18,losses:16,lots:5.1},
+    positions:[
+      {symbol:"XAUUSD",type:"BUY",volume:0.2,open:+(xp-6.7).toFixed(2),current:xp,sl:+(xp-18).toFixed(2),tp:+(xp+22).toFixed(2),swap:-1.2,profit:134.6},
+      {symbol:"BTCUSD",type:"SELL",volume:0.1,open:+(bp+80).toFixed(2),current:bp,sl:+(bp+1300).toFixed(2),tp:+(bp-2400).toFixed(2),swap:0,profit:8.0}],
+    history:[{time:"sample",symbol:"XAUUSD",type:"BUY",volume:0.1,price:+(xp-3).toFixed(2),profit:62.0},
+             {time:"sample",symbol:"XAUUSD",type:"SELL",volume:0.2,price:+(xp+2).toFixed(2),profit:-48.0},
+             {time:"sample",symbol:"BTCUSD",type:"BUY",volume:0.1,price:+(bp-500).toFixed(2),profit:72.4}],
+    symbols, cal: []
+  };
+}
+
+/* ---------------- 5-minute signal ---------------- */
+function nextHigh(cal, from){
+  return (cal || []).filter(e => e.imp >= 3 && e.t >= from).sort((a,b) => a.t - b.t)[0] || null;
+}
+function fiveMin(s, cal){
+  if (!s || !s.m1 || s.m1.length < 40 || !s.m5 || s.m5.length < 30) return null;
+  const dg = s.digits ?? 2, now = nowS();
+  const c1 = closes(s.m1), c5 = closes(s.m5);
+  const a1 = atr(s.m1, 14).at(-1) || 0, p = c1.at(-1);
+  const R = []; let score = 0;
+  const add = (w, txt) => { score += w; R.push({ w, txt }); };
+  const e9_5 = ema(c5,9).at(-1), e21_5 = ema(c5,21).at(-1);
+  add(e9_5 > e21_5 ? 2 : -2, `M5 trend ${e9_5 > e21_5 ? "up" : "down"} (EMA 9 ${e9_5 > e21_5 ? "above" : "below"} EMA 21)`);
+  const e9 = ema(c1,9).at(-1), e21 = ema(c1,21).at(-1);
+  add(e9 > e21 ? 1 : -1, `M1 trend ${e9 > e21 ? "up" : "down"}`);
+  const mom = a1 ? (c1.at(-1) - c1.at(-4)) / a1 : 0;
+  if (mom > 0.8) add(1, `Last 3 minutes pushed up ${fx(c1.at(-1) - c1.at(-4), dg)}`);
+  else if (mom < -0.8) add(-1, `Last 3 minutes pushed down ${fx(c1.at(-4) - c1.at(-1), dg)}`);
+  const mh = macd(c1).h, h0 = mh.at(-1), h1 = mh.at(-2);
+  if (h0 > 0 && h0 >= h1) add(1, "M1 MACD positive and rising");
+  else if (h0 < 0 && h0 <= h1) add(-1, "M1 MACD negative and falling");
+  const r = rsi(c1, 7).at(-1);
+  if (r >= 82) add(-1, `M1 RSI ${fx(r,0)} overbought, pullback risk`);
+  else if (r <= 18) add(1, `M1 RSI ${fx(r,0)} oversold, bounce risk`);
+  else if (r > 60) add(1, `M1 RSI ${fx(r,0)} bullish`);
+  else if (r < 40) add(-1, `M1 RSI ${fx(r,0)} bearish`);
+  if (s.h1 && s.h1.length > 60){
+    const e50h = ema(closes(s.h1), 50).at(-1);
+    add(p > e50h ? 1 : -1, `H1 filter: price ${p > e50h ? "above" : "below"} EMA 50`);
+  }
+  let block = "";
+  const nh = nextHigh(cal, now - 60);
+  if (nh && nh.t - now <= 600 && nh.t - now > -60) block = `${nh.name} at ${sg(nh.t)}. Spreads jump and price whipsaws. Stand aside.`;
+  const recent = (cal || []).filter(e => e.imp >= 3 && e.act != null && now - e.t >= 0 && now - e.t <= 900).sort((a,b) => b.t - a.t)[0];
+  if (recent){ const j = judge(recent); if (j && j.usd) add(j.usd > 0 ? -2 : 2, `${recent.name} printed ${fmtVal(recent, recent.act)} vs ${fmtVal(recent, recent.fc)} → ${j.gold} gold`); }
+  const spread = (s.ask - s.bid) || 0;
+  if (a1 && spread > 0.6 * a1) block = block || `Spread ${fx(spread, dg)} is wide against a 1-minute range of ${fx(a1, dg)}. Wait for it to narrow.`;
+  const t5 = s.m5.at(-1)[0], until = t5 + 300;
+  const dir = block ? 0 : score >= 3 ? 1 : score <= -3 ? -1 : 0;
+  const entry = dir > 0 ? s.ask : dir < 0 ? s.bid : (s.bid + s.ask) / 2;
+  const sl = dir > 0 ? entry - 1.5*a1 : entry + 1.5*a1, tp = dir > 0 ? entry + 2*a1 : entry - 2*a1;
+  return { dir, score, max: 9, reasons: R, entry, sl, tp, atr: a1, until, t5, block, digits: dg, mid: (s.bid + s.ask) / 2 };
+}
+/* records one signal per M5 candle and grades it when the candle closes */
+function track(key, sig, s, live){
+  const k = "trk:" + key, log = store.get(k, []);
+  if (live && sig && nowS() - sig.t5 <= 90 && !log.some(x => x.t5 === sig.t5)){   // only calls made at the start of a candle
+    log.push({ t5: sig.t5, dir: sig.dir, entry: sig.mid, score: sig.score, done: false });
+  }
+  for (const x of log){
+    if (x.done) continue;
+    const bar = s.m5.find(b => b[0] === x.t5), later = s.m5.some(b => b[0] > x.t5);
+    if (bar && later){ x.exit = bar[4]; x.move = (x.exit - x.entry) * (x.dir || 0); x.done = true; }
+    else if (!bar && s.m5.length && s.m5[0][0] > x.t5) { x.done = true; x.lost = true; }
+  }
+  const trimmed = log.slice(-300); store.set(k, trimmed);
+  const graded = trimmed.filter(x => x.done && !x.lost && x.dir);
+  const wins = graded.filter(x => x.move > 0).length;
+  const avg = graded.length ? graded.reduce((a,x) => a + x.move, 0) / graded.length : 0;
+  return { log: trimmed, n: graded.length, wins, rate: graded.length ? wins / graded.length : null, avg };
+}
+
+/* ---------------- Renderers ---------------- */
+function renderSignal(el, label, sig, stats, live){
+  if (!el) return;
+  if (!sig){ el.innerHTML = `<div class="empty">Waiting for ${esc(label)} candles from MT5.</div>`; return; }
+  const dg = sig.digits, word = sig.dir > 0 ? "BUY" : sig.dir < 0 ? "SELL" : "NO TRADE";
+  const reasons = sig.reasons.map(r => `<li><span class="arrow ${cls(r.w)}">${r.w > 0 ? "+" + r.w : r.w}</span><span>${esc(r.txt)}</span></li>`).join("");
+  const st = stats && stats.n
+    ? `Tracked on ${live ? "your MT5 feed" : "this feed"}: <b>${stats.n}</b> graded signals · <b class="${stats.rate >= 0.5 ? "pos" : "neg"}">${fx(stats.rate*100,0)}% right</b> · avg ${stats.avg >= 0 ? "+" : ""}${fx(stats.avg, dg)} per signal`
+    : live ? "Tracking starts now. Each M5 candle's call is graded when the candle closes." : "Connect MT5 to start tracking accuracy on real prices.";
+  el.innerHTML = `
+    <div class="sig-head">
+      <span class="sig-word ${tagCls(sig.dir)}">${word}</span>
+      <div class="sig-meta"><b>${esc(label)}</b> · current M5 candle<br><span class="hint">closes <b class="mono" data-cd="${sig.until}">—</b> at ${sg(sig.until)} SGT</span></div>
+      <span class="pill-score mono" title="Sum of the reasons below, out of ±${sig.max}">${sig.score > 0 ? "+" : ""}${sig.score} / ${sig.max}</span>
+    </div>
+    ${sig.block ? `<div class="warnbox">${esc(sig.block)}</div>` : ""}
+    <div class="sig-grid">
+      <div><label>${sig.dir ? "Entry" : "Mid price"}</label><span class="mono">${fx(sig.dir ? sig.entry : sig.mid, dg)}</span></div>
+      <div><label>Stop (1.5× ATR)</label><span class="mono neg">${sig.dir ? fx(sig.sl, dg) : "—"}</span></div>
+      <div><label>Target (2× ATR)</label><span class="mono pos">${sig.dir ? fx(sig.tp, dg) : "—"}</span></div>
+      <div><label>M1 ATR</label><span class="mono">${fx(sig.atr, dg)}</span></div>
+    </div>
+    <ul class="notes reasons">${reasons}</ul>
+    <p class="hint track">${st}</p>`;
+}
+function renderTech(el, s){
+  if (!el) return;
+  const tfs = [["M5", s && s.m5], ["H1", s && s.h1]].map(([n,b]) => [n, tech(b, s ? s.digits : 2)]);
+  if (!tfs.some(x => x[1])){ el.innerHTML = `<div class="empty">Waiting for candles from MT5.</div>`; return; }
+  const names = (tfs.find(x => x[1])[1]).rows.map(r => r.name);
+  const all = new Set(); tfs.forEach(([,t]) => t && t.rows.forEach(r => all.add(r.name)));
+  const head = `<thead><tr><th>Indicator</th>${tfs.map(([n]) => `<th>${n}</th>`).join("")}</tr></thead>`;
+  const body = [...all].map(nm => `<tr><td>${nm}</td>${tfs.map(([,t]) => { const r = t && t.rows.find(x => x.name === nm);
+    return r ? `<td><span class="mono">${esc(r.val)}</span> <span class="dot ${tagCls(r.sig)}" title="${esc(r.note)}"></span><div class="hint">${esc(r.note)}</div></td>` : "<td>—</td>"; }).join("")}</tr>`).join("");
+  const foot = `<tr class="sum"><td>Summary</td>${tfs.map(([,t]) => t ? `<td><span class="bias-tag ${tagCls(t.word[1])}">${t.word[0].toUpperCase()}</span></td>` : "<td>—</td>").join("")}</tr>`;
+  el.innerHTML = `<div class="tbl"><table>${head}<tbody>${body}${foot}</tbody></table></div>`;
+}
+function renderLevels(el, s){
+  if (!el) return;
+  const pv = pivots(s);
+  if (!pv){ el.innerHTML = `<div class="empty">Waiting for daily candles from MT5.</div>`; return; }
+  const dg = s.digits ?? 2, p = (s.bid + s.ask) / 2;
+  const L = [["R3",pv.R3],["R2",pv.R2],["R1",pv.R1],["Pivot",pv.P],["S1",pv.S1],["S2",pv.S2],["S3",pv.S3],
+             ["Prev day high",pv.PDH],["Prev day low",pv.PDL],["Today high",pv.TDH],["Today low",pv.TDL]];
+  L.push(["Price now", p, true]);
+  L.sort((a,b) => b[1] - a[1]);
+  el.innerHTML = `<div class="tbl"><table><thead><tr><th>Level</th><th class="r">Price</th><th class="r">Distance</th></tr></thead><tbody>` +
+    L.map(([n,v,now]) => now ? `<tr class="now"><td>▶ Price now</td><td class="r mono">${fx(v,dg)}</td><td class="r mono">—</td></tr>`
+      : `<tr><td>${n}</td><td class="r mono">${fx(v,dg)}</td><td class="r mono ${v > p ? "pos" : "neg"}">${v > p ? "+" : ""}${fx(v - p, dg)}</td></tr>`).join("") + `</tbody></table></div>`;
+}
+function renderCalendar(el, cal, mode, live, editable){
+  if (!el) return;
+  if (!live){ el.innerHTML = `<div class="empty">Connect MT5 to see live countdowns, forecasts and actual numbers with an automatic ${mode === "stocks" ? "index" : "gold"} signal. The TradingView calendar next to this is already live.</div>`; return; }
+  const now = nowS();
+  const list = (cal || []).filter(e => e.t > now - 36*3600).sort((a,b) => a.t - b.t);
+  if (!list.length){ el.innerHTML = `<div class="empty">No medium or high impact US events in the MT5 calendar for the coming days.</div>`; return; }
+  let day = "", html = `<div class="tbl"><table class="cal"><thead><tr><th>SGT</th><th></th><th>Event</th><th class="r">Actual</th><th class="r">Fcst</th><th class="r">Prev</th><th>${mode === "stocks" ? "Indices" : "Gold"}</th></tr></thead><tbody>`;
+  for (const e of list){
+    const d = sg(e.t, {weekday:"short", day:"2-digit", month:"short"});
+    if (d !== day){ day = d; html += `<tr class="day"><td colspan="7">${d}</td></tr>`; }
+    const j = judge(e), up = e.t > now;
+    let sig;
+    if (j){
+      const v = mode === "stocks" ? j.idx : -Math.sign(j.usd);
+      const w = mode === "stocks" ? (v > 0 ? "BUY" : v < 0 ? "SELL" : "MIXED") : j.gold === "WAIT" ? "IN LINE" : j.gold;
+      sig = `<span class="bias-tag ${tagCls(v)}">${w}${j.strength === 2 && v ? " · STRONG" : ""}</span>`;
+    } else if (up) sig = `<span class="hint">${mode === "stocks" ? "" : esc(preGuide(e))}</span>`;
+    else sig = editable && e.act == null && e.fc != null
+      ? `<input class="act-in" type="number" step="any" data-key="${esc(e.key || "")}" placeholder="Type actual" aria-label="Actual for ${esc(e.name)}">`
+      : `<span class="hint">${e.act == null ? "Awaiting number" : ""}</span>`;
+    html += `<tr class="${up ? "up" : "past"} ${e.imp >= 3 ? "hi" : ""}"><td class="mono">${sg(e.t)}${up ? `<div class="hint mono" data-cd="${e.t}">—</div>` : ""}</td>
+      <td><span class="imp i${e.imp}" title="${e.imp >= 3 ? "High" : "Medium"} impact"></span></td><td class="ev">${esc(e.name)}</td>
+      <td class="r mono">${j ? `<b class="${cls(-j.usd)}">${fmtVal(e, e.act)}</b>` : fmtVal(e, e.act)}${editable && e.userAct ? ` <button class="del" data-clear="${esc(e.key)}" aria-label="Clear actual">×</button>` : ""}</td><td class="r mono">${fmtVal(e, e.fc)}</td><td class="r mono">${fmtVal(e, e.prev)}</td><td>${sig}</td></tr>`;
+  }
+  el.innerHTML = html + `</tbody></table></div>`;
+}
+function renderNext(el, cal, live, mode){
+  if (!el) return;
+  if (!live){ el.innerHTML = `<span class="hint">Next high-impact US release appears here with a live countdown once MT5 is connected.</span>`; return; }
+  const n = nextHigh(cal, nowS() - 120);
+  if (!n){ el.innerHTML = `<span class="hint">No high-impact US release in the next 8 days.</span>`; return; }
+  const soon = n.t - nowS() < 900;
+  el.innerHTML = `<div class="next ${soon ? "soon" : ""}"><span class="lbl">Next high impact</span><b>${esc(n.name)}</b>
+    <span class="mono">${sg(n.t,{weekday:"short",hour:"2-digit",minute:"2-digit"})} SGT</span><span class="cd mono" data-cd="${n.t}">—</span>
+    <span class="hint">Fcst ${fmtVal(n, n.fc)} · Prev ${fmtVal(n, n.prev)}${mode === "stocks" ? "" : " · " + esc(preGuide(n))}</span></div>`;
+}
+function tickCountdowns(){
+  const now = nowS();
+  $$("[data-cd]").forEach(e => { const t = +e.dataset.cd, d = t - now; e.textContent = d > 0 ? "in " + dur(d) : (d > -300 ? "released " + dur(-d) + " ago" : "closed"); });
+}
+
+/* ---------------- Account ---------------- */
+function renderAcct(a){
+  const c = a.currency;
+  const id = $("#acct-id"); if (id) id.textContent = a.sample ? "sample data, not your account" : `${a.login} · ${a.server}`;
+  const wr = s => s.trades ? Math.round(s.wins / s.trades * 100) + "% win" : "no trades";
+  const k = [
+    ["Account size", money(a.balance,c), `1:${a.leverage} · ${esc(a.company)}`],
+    ["Equity", money(a.equity,c), `Free margin ${money(a.free_margin,c)}`],
+    ["Floating P/L", signed(a.floating,c), `${a.open_count} open · ${(+a.open_lots).toFixed(2)} lots`, cls(a.floating)],
+    ["Today closed", signed(a.today.pl,c), `${a.today.trades} trades · ${wr(a.today)}`, cls(a.today.pl)],
+    ["This week", signed(a.week.pl,c), `${a.week.trades} trades · ${wr(a.week)}`, cls(a.week.pl)],
+    ["This month", signed(a.month.pl,c), `${a.month.trades} trades · ${(+a.month.lots).toFixed(2)} lots`, cls(a.month.pl)],
+    ["Margin level", a.margin > 0 ? (+a.margin_level).toFixed(0) + "%" : "—", `Used ${money(a.margin,c)}`, a.margin > 0 && a.margin_level < 300 ? "neg" : ""]
+  ];
+  const kp = $("#acct-kpis"); if (kp) kp.innerHTML = k.map(([l,v,s,cl]) => `<div class="kpi"><label>${l}</label><span class="v ${cl||""}">${v}</span><span class="s">${s}</span></div>`).join("");
+  const P = a.positions || [];
+  const tp = $("#tbl-pos");
+  if (tp) tp.innerHTML = `<thead><tr><th>Symbol</th><th>Side</th><th class="r">Lots</th><th class="r">Open</th><th class="r">Now</th><th class="r">SL</th><th class="r">TP</th><th class="r">P/L</th></tr></thead><tbody>` +
+    (P.length ? P.map(p => `<tr><td>${esc(p.symbol)}</td><td><span class="bias-tag ${p.type==="BUY"?"buy":"sell"}">${p.type}</span></td><td class="r mono">${(+p.volume).toFixed(2)}</td><td class="r mono">${p.open}</td><td class="r mono">${p.current}</td><td class="r mono">${+p.sl ? p.sl : "—"}</td><td class="r mono">${+p.tp ? p.tp : "—"}</td><td class="r mono ${cls(p.profit)}">${signed(+p.profit + +(p.swap||0), c)}</td></tr>`).join("")
+     : `<tr><td colspan="8"><div class="empty">No open positions</div></td></tr>`) + `</tbody>`;
+  const H = a.history || [], th = $("#tbl-hist");
+  if (th) th.innerHTML = `<thead><tr><th>Closed</th><th>Symbol</th><th>Side</th><th class="r">Lots</th><th class="r">Price</th><th class="r">P/L</th></tr></thead><tbody>` +
+    (H.length ? H.map(h => `<tr><td class="mono">${esc(h.time)}</td><td>${esc(h.symbol)}</td><td>${h.type}</td><td class="r mono">${(+h.volume).toFixed(2)}</td><td class="r mono">${h.price}</td><td class="r mono ${cls(h.profit)}">${signed(h.profit,c)}</td></tr>`).join("")
+     : `<tr><td colspan="6"><div class="empty">No closed trades in the last 30 days</div></td></tr>`) + `</tbody>`;
+}
+
+/* ---------------- MT5 link ---------------- */
+let state = { acct: null, live: false }, onData = () => {}, handle = null, timer = null;
+function setConn(st, text){
+  const p = $("#conn-pill"); if (!p) return;
+  p.className = "pill " + st;
+  p.textContent = { live:"Live from MT5", stale:"MT5 not updating", sample:"Sample data", err:"Waiting for file" }[st] || st;
+  const t = $("#conn-time"); if (t) t.textContent = text || "";
+}
+function ingest(txt){
+  let d; try { d = JSON.parse(txt); } catch(e){ return false; }
+  d.symbols = d.symbols || {}; d.cal = d.cal || [];
+  const nowLocal = nowS() - new Date().getTimezoneOffset()*60;
+  const age = Math.round(nowLocal - (d.local_ts || 0));
+  state.acct = d; state.live = age <= 20;
+  if (age > 20) setConn("stale", `Last update ${age > 3600 ? Math.round(age/3600)+" h" : age+" s"} ago · is MT5 open with the EA running?`);
+  else setConn("live", `Server ${d.server_time}${d.version >= 2 ? "" : " · update the EA to v2 for live candles and calendar"}${d.cal_note ? " · " + d.cal_note : ""}`);
+  renderAcct(d); onData(state);
+  return true;
+}
+const idb = {
+  open(){ return new Promise((res, rej) => { const r = indexedDB.open("golddesk", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async put(k, v){ try{ const db = await this.open(); db.transaction("kv","readwrite").objectStore("kv").put(v, k); }catch(e){} },
+  async get(k){ try{ const db = await this.open(); return await new Promise(res => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }catch(e){ return null; } }
+};
+async function poll(){
+  if (!handle) return;
+  try { const f = await handle.getFile(); ingest(await f.text()); }
+  catch(e){ setConn("err", "Can't read the file. Click Reconnect."); clearInterval(timer); const b = $("#btn-reconnect"); if (b) b.hidden = false; }
+}
+function startPolling(){ clearInterval(timer); poll(); timer = setInterval(poll, 2000); const b = $("#btn-reconnect"); if (b) b.hidden = true; }
+function init(cb){
+  onData = cb;
+  state.acct = sample(); state.live = false; setConn("sample", "");
+  renderAcct(state.acct); onData(state);
+  $("#btn-connect").onclick = async () => {
+    if (window.showOpenFilePicker){
+      try { [handle] = await window.showOpenFilePicker({ types:[{ description:"GoldDesk export", accept:{"application/json":[".json"]} }] }); idb.put("handle", handle); startPolling(); } catch(e){}
+    } else $("#file-in").click();
+  };
+  $("#file-in").onchange = async e => { const f = e.target.files[0]; if (f && ingest(await f.text())) { const t = $("#conn-time"); t.textContent += " · this browser can't auto-refresh, load the file again to update"; } };
+  $("#btn-reconnect").onclick = async () => { if (!handle) return; try { if ((await handle.requestPermission({mode:"read"})) === "granted") startPolling(); } catch(e){} };
+  (async () => { const h = await idb.get("handle"); if (h){ handle = h; $("#btn-reconnect").hidden = false; setConn("err", "Click Reconnect to resume live MT5 data"); } })();
+  document.addEventListener("dragover", e => e.preventDefault());
+  document.addEventListener("drop", async e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && /\.json$/i.test(f.name)) ingest(await f.text()); });
+  clock(); setInterval(clock, 15000);
+  tickCountdowns(); setInterval(tickCountdowns, 1000);
+  /* sample candles drift forward so the page looks alive before MT5 connects */
+  setInterval(() => { if (!state.live && state.acct && state.acct.sample){ state.acct = sample(); renderAcct(state.acct); onData(state); } }, 60000);
+}
+
+return { $, $$, store, esc, fx, money, signed, cls, tagCls, sg, dur, tv, TVB, chartCfg, ema, rsi, atr, macd, closes, tech, verdict, pivots,
+         judge, ruleFor, preGuide, fmtVal, fiveMin, track, nextHigh, renderSignal, renderTech, renderLevels, renderCalendar, renderNext,
+         tickCountdowns, init, state: () => state, nowS };
+})();
+
+</script>
+<script>
+(function(){
+"use strict";
+const { $, store, esc, fx, cls, tagCls, tv, TVB, chartCfg } = GD;
+const money = GD.money;
+
+/* ---------- TradingView ---------- */
+const FEEDS = {
+  XAU: [["OANDA:XAUUSD","OANDA"],["FOREXCOM:XAUUSD","FOREX.com"],["FX_IDC:XAUUSD","FX IDC"]],
+  BTC: [["OANDA:BTCUSD","OANDA"],["BITSTAMP:BTCUSD","Bitstamp"],["COINBASE:BTCUSD","Coinbase"]]
+};
+let curSym = store.get("sym", "XAU"), feedChoice = store.get("feed", {XAU:"OANDA:XAUUSD", BTC:"OANDA:BTCUSD"}), tf = store.get("tf", "15");
+if (tf === "1") tf = "15";
+function renderMain(){
+  const symbol = feedChoice[curSym];
+  $("#sym-xau").setAttribute("aria-pressed", curSym === "XAU");
+  $("#sym-btc").setAttribute("aria-pressed", curSym === "BTC");
+  $("#sel-feed").innerHTML = FEEDS[curSym].map(([v,l]) => `<option value="${v}" ${v===symbol?"selected":""}>${l}</option>`).join("");
+  $("#sel-tf").value = tf;
+  tv("tv-main", "advanced-chart", chartCfg(symbol, tf, { withdateranges:true, studies:["STD;EMA","STD;RSI"] }));
+  const taTf = {"5":"5m","15":"15m","60":"1h","240":"4h","D":"1D"}[tf] || "15m";
+  tv("tv-ta", "technical-analysis", Object.assign({}, TVB, { interval:taTf, width:"100%", height:"100%", symbol, showIntervalTabs:true, displayMode: innerWidth >= 900 ? "multiple" : "single" }));
+  $("#ta-label").textContent = (curSym === "XAU" ? "XAUUSD" : "BTCUSD") + " · " + $("#sel-tf").selectedOptions[0].text;
+}
+$("#sym-xau").onclick = () => { curSym = "XAU"; store.set("sym", curSym); renderMain(); };
+$("#sym-btc").onclick = () => { curSym = "BTC"; store.set("sym", curSym); renderMain(); };
+$("#sel-feed").onchange = e => { feedChoice[curSym] = e.target.value; store.set("feed", feedChoice); renderMain(); };
+$("#ta-full").onclick = async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await $("#ta-panel").requestFullscreen(); }
+  catch(e){ $("#ta-panel").scrollIntoView({ behavior:"smooth", block:"start" }); }
+};
+document.addEventListener("fullscreenchange", () => { $("#ta-full").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; });
+$("#sel-tf").onchange = e => { tf = e.target.value; store.set("tf", tf); renderMain(); };
+renderMain();
+function paintLayout(){
+  const u = store.get("tvLayout", "");
+  $("#tv-layout").value = u;
+  $("#tv-open").href = /^https:\/\/([a-z]+\.)?tradingview\.com\//i.test(u) ? u : "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(feedChoice[curSym]);
+}
+$("#tv-layout").onchange = e => { const u = e.target.value.trim(); if (u && !/^https:\/\/([a-z]+\.)?tradingview\.com\//i.test(u)){ e.target.value = ""; e.target.placeholder = "Paste a tradingview.com chart link"; return; } store.set("tvLayout", u); paintLayout(); };
+paintLayout();
+tv("tv-tape", "ticker-tape", Object.assign({}, TVB, { displayMode:"adaptive", showSymbolLogo:true, symbols:[
+  {proName:"OANDA:XAUUSD",title:"Gold"},{proName:"OANDA:BTCUSD",title:"Bitcoin"},{proName:"TVC:DXY",title:"DXY"},
+  {proName:"TVC:USOIL",title:"WTI Oil"},{proName:"TVC:US10Y",title:"US 10Y"},{proName:"OANDA:XAGUSD",title:"Silver"},
+  {proName:"OANDA:EURUSD",title:"EURUSD"},{proName:"OANDA:SPX500USD",title:"S&P 500"}]}));
+tv("tv-quotes", "market-quotes", Object.assign({}, TVB, { width:"100%", height:"100%", showSymbolLogo:true, symbolsGroups:[
+  { name:"Gold drivers", symbols:[
+    {name:"TVC:DXY",displayName:"US Dollar Index"},{name:"TVC:US10Y",displayName:"US 10Y yield"},{name:"TVC:US02Y",displayName:"US 2Y yield"},
+    {name:"TVC:VIX",displayName:"VIX fear index"},{name:"TVC:USOIL",displayName:"WTI crude"},{name:"OANDA:XAGUSD",displayName:"Silver"},
+    {name:"OANDA:SPX500USD",displayName:"S&P 500"},{name:"OANDA:USDJPY",displayName:"USDJPY"},{name:"OANDA:EURUSD",displayName:"EURUSD"}]}]}));
+tv("tv-dxy", "advanced-chart", chartCfg("TVC:DXY", "60", { hide_side_toolbar:true }));
+tv("tv-oil", "advanced-chart", chartCfg("TVC:USOIL", "60", { hide_side_toolbar:true }));
+tv("tv-cal", "events", Object.assign({}, TVB, { width:"100%", height:"100%", importanceFilter:"1", countryFilter:"us" }));
+tv("tv-feed", "timeline", Object.assign({}, TVB, { feedMode:"all_symbols", displayMode:"regular", width:"100%", height:"100%" }));
+
+/* ---------- Live market data: MT5 when connected, free live feed otherwise ---------- */
+const BN = "https://data-api.binance.vision/api/v3/klines";
+let mkt = { at:0, err:"", symbols:null };
+async function kl(sym, iv, n){
+  const r = await fetch(`${BN}?symbol=${sym}&interval=${iv}&limit=${n}`, { cache:"no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return (await r.json()).map(k => [Math.floor(k[0]/1000), +k[1], +k[2], +k[3], +k[4]]);
+}
+const inv = b => b.map(x => [x[0], 100/x[1], 100/x[3], 100/x[2], 100/x[4]]);   // EURUSD → dollar strength
+async function loadMarket(){
+  try {
+    const [m1, m5, h1, d1, eh1, ed1, bh1, bd1] = await Promise.all([
+      kl("PAXGUSDT","1m",150), kl("PAXGUSDT","5m",150), kl("PAXGUSDT","1h",220), kl("PAXGUSDT","1d",10),
+      kl("EURUSDT","1h",220), kl("EURUSDT","1d",10), kl("BTCUSDT","1h",220), kl("BTCUSDT","1d",10)]);
+    const g = m1.at(-1)[4], u = 100 / eh1.at(-1)[4], b = bh1.at(-1)[4];
+    mkt = { at: Date.now(), err: "", source:"proxy", symbols: {
+      XAUUSD: { sym:"PAXG/USDT · gold-backed token", digits:2, bid:g, ask:g, m1, m5, h1, d1, contract:100, proxy:true },
+      USDX:   { sym:"Dollar strength from EUR/USD", digits:3, bid:u, ask:u, h1:inv(eh1), d1:inv(ed1), proxy:true },
+      BTCUSD: { sym:"BTC/USDT", digits:2, bid:b, ask:b, h1:bh1, d1:bd1, proxy:true } } };
+  } catch(e){ mkt.err = String(e.message || e); }
+  paintSrc();
+  if (lastState) update(lastState);
+}
+function paintSrc(){}
+function market(st){
+  if (st && st.live) return { S: st.acct.symbols || {}, real: true, src: "Your CPT Markets MT5 price · live" };
+  if (mkt.symbols && Date.now() - mkt.at < 180e3) return { S: mkt.symbols, real: true, proxy: true,
+    src: `Live gold proxy (PAXG, tracks spot gold within ~0.5%) · updated ${new Date(mkt.at).toLocaleTimeString("en-GB",{timeZone:"Asia/Singapore",hour:"2-digit",minute:"2-digit",second:"2-digit"})}` };
+  return { S: (st && st.acct.symbols) || {}, real: false, src: mkt.err ? `Sample figures · live feed unavailable (${mkt.err})` : "Sample figures · loading live feed…" };
+}
+loadMarket(); setInterval(loadMarket, 30e3);
+
+/* ---------- Gold call: economy data + live market ---------- */
+function goldCall(st, cal){
+  const M = market(st), S = M.S, now = GD.nowS(), R = [];
+  let eco = 0, mk = 0, confirm = null;
+  const prints = (cal || []).filter(x => x.imp >= 3 && x.act != null && x.t <= now && now - x.t < 7*86400)
+                            .map(x => [x, GD.judge(x)]).filter(([,j]) => j).sort((a,b) => b[0].t - a[0].t);
+  const fresh = prints.find(([x]) => now - x.t < 86400);
+  if (fresh){
+    const [x, j] = fresh, h = (now - x.t) / 3600, w = j.usd ? -Math.sign(j.usd) * (h < 4 ? 2 : 1) : 0;
+    eco += w;
+    R.push({ w, src:"eco", txt:`${x.name} ${GD.fmtVal(x,x.act)} vs ${GD.fmtVal(x,x.fc)} forecast, ${h < 1 ? Math.max(1, Math.round(h*60)) + " min" : Math.round(h) + " h"} ago → ${j.gold === "WAIT" ? "in line" : (j.gold === "BUY" ? "gold-positive" : "gold-negative")}` });
+  } else R.push({ w:0, src:"eco", txt:"No high-impact US data in the last 24 hours" });
+  const week = prints.filter(p => p !== fresh && p[1].usd);
+  if (week.length){
+    const w = Math.max(-1, Math.min(1, week.reduce((t,[,j]) => t - Math.sign(j.usd), 0)));
+    eco += w;
+    R.push({ w, src:"eco", txt:`This week's other data: ${week.length} release${week.length > 1 ? "s" : ""}, ${week.filter(([,j]) => j.usd < 0).length} gold-positive, ${week.filter(([,j]) => j.usd > 0).length} gold-negative` });
+  }
+  if (M.real && S.XAUUSD && S.XAUUSD.h1 && S.XAUUSD.h1.length > 55){
+    const t = GD.tech(S.XAUUSD.h1), w = t ? Math.sign(t.word[1]) : 0;
+    mk += w; R.push({ w, src:"mkt", txt:`Gold H1 technicals: ${t ? t.word[0] : "—"}` });
+  }
+  if (M.real && S.XAUUSD && S.XAUUSD.m5 && S.XAUUSD.m5.length > 30){
+    const c = GD.closes(S.XAUUSD.m5), up = GD.ema(c,9).at(-1) > GD.ema(c,21).at(-1);
+    mk += up ? 1 : -1; R.push({ w: up ? 1 : -1, src:"mkt", txt:`Gold M5 momentum ${up ? "up" : "down"}` });
+  }
+  if (M.real && S.USDX && S.USDX.d1 && S.USDX.d1.length){
+    const ch = ((S.USDX.bid + S.USDX.ask)/2 - S.USDX.d1.at(-1)[1]) / S.USDX.d1.at(-1)[1] * 100, w = ch > 0.15 ? -1 : ch < -0.15 ? 1 : 0;
+    mk += w; R.push({ w, src:"mkt", txt:`Dollar ${ch > 0 ? "+" : ""}${fx(ch,2)}% today${w ? (w < 0 ? ", weighing on gold" : ", helping gold") : ", flat"}` });
+  }
+  // did price actually react the way the data says? (first hour after a release)
+  if (fresh && fresh[1].usd && now - fresh[0].t < 3600 && M.real && S.XAUUSD && S.XAUUSD.m1 && S.XAUUSD.m1.length > 20){
+    const m1 = S.XAUUSD.m1, before = m1.filter(b => b[0] < fresh[0].t).at(-1);
+    if (before){
+      const move = (S.XAUUSD.bid + S.XAUUSD.ask)/2 - before[4], want = -Math.sign(fresh[1].usd), a = GD.atr(m1,14).at(-1) || 0;
+      confirm = move * want > 0.3*a ? true : move * want < -0.3*a ? false : null;
+      const cw = confirm === true ? want : confirm === false ? -want : 0; mk += cw;
+      R.push({ w: cw, src:"mkt",
+        txt: `Gold moved ${move >= 0 ? "+" : ""}${fx(move,2)} since the release: ${confirm === true ? "market confirms the data" : confirm === false ? "market is going against the data" : "no clear reaction yet"}` });
+    }
+  }
+  if (!M.real) R.push({ w:0, src:"mkt", txt:"Live market data not available yet, so this call uses economic data only" });
+  const total = eco + mk;
+  let word = total >= 2 ? "BUY" : total <= -2 ? "SELL" : "WAIT", why = "";
+  if (eco && mk && Math.sign(eco) !== Math.sign(mk)){ word = "WAIT"; why = "Economy and market disagree"; }
+  if (confirm === false){ word = "WAIT"; why = "Price is rejecting the data"; }
+  if (!why) why = word === "WAIT" ? "Not enough agreement between data and price" : `Data and price both point ${word === "BUY" ? "up" : "down"}`;
+  return { word, total, eco, mk, why, R, M };
+}
+function callBox(c){
+  return `<div class="verdict"><span class="big ${c.word === "BUY" ? "pos" : c.word === "SELL" ? "neg" : ""}">${c.word === "WAIT" ? "WAIT" : c.word + " gold"}</span><span class="pill-score mono">economy ${c.eco > 0 ? "+" : ""}${c.eco} · market ${c.mk > 0 ? "+" : ""}${c.mk}</span></div>
+    <span class="hint" style="color:var(--fg)">${esc(c.why)}</span>
+    <ul class="notes reasons">${c.R.map(r => `<li><span class="arrow ${cls(r.w)}">${r.w > 0 ? "+" + r.w : r.w === 0 ? "·" : r.w}</span><span><span class="src-tag ${r.src}">${r.src === "eco" ? "Economy" : "Market"}</span>${esc(r.txt)}</span></li>`).join("")}</ul>`;
+}
+
+/* ---------- Fundamentals from MT5 ---------- */
+function chg(s){ if (!s || !s.d1 || !s.d1.length) return null; const o = s.d1.at(-1)[1], p = (s.bid + s.ask)/2; return (p - o) / o * 100; }
+function h1trend(s){ if (!s || !s.h1 || s.h1.length < 55) return 0; const c = GD.closes(s.h1); return GD.ema(c,20).at(-1) > GD.ema(c,50).at(-1) ? 1 : -1; }
+function corr(a, b){
+  if (!a || !b || !a.h1 || !b.h1) return null;
+  const mb = new Map(b.h1.map(x => [x[0], x[4]])), xs = [], ys = [];
+  for (let i = 1; i < a.h1.length; i++){ const t = a.h1[i][0], tp = a.h1[i-1][0];
+    if (mb.has(t) && mb.has(tp)){ xs.push(a.h1[i][4] / a.h1[i-1][4] - 1); ys.push(mb.get(t) / mb.get(tp) - 1); } }
+  const n = Math.min(xs.length, 100); if (n < 30) return null;
+  const X = xs.slice(-n), Y = ys.slice(-n), mx = X.reduce((s,v)=>s+v,0)/n, my = Y.reduce((s,v)=>s+v,0)/n;
+  let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++){ sxy += (X[i]-mx)*(Y[i]-my); sxx += (X[i]-mx)**2; syy += (Y[i]-my)**2; }
+  return sxy / Math.sqrt(sxx*syy || 1);
+}
+const DRIVERS = [
+  ["USDX","US Dollar Index", c => c > 0.15 ? [-1,"Dollar up: bearish gold"] : c < -0.15 ? [1,"Dollar down: supportive"] : [0,"Flat"]],
+  ["USOIL","WTI crude", c => c > 1 ? [1,"Oil up: inflation & fear bid"] : c < -1 ? [-1,"Oil down: lower inflation bets"] : [0,"Calm"]],
+  ["US500","S&P 500", c => c < -0.8 ? [1,"Stocks selling: haven bid"] : c > 0.8 ? [-1,"Risk-on: less haven demand"] : [0,"Normal"]],
+  ["NAS100","Nasdaq 100", c => c < -1 ? [1,"Tech selloff: haven bid"] : c > 1 ? [-1,"Risk-on"] : [0,"Normal"]],
+  ["BTCUSD","Bitcoin", c => [0, c > 2 ? "Strong risk appetite" : c < -2 ? "Crypto under pressure" : "Normal"]]
+];
+function renderFund(st){
+  const M = market(st), S = M.S, gold = S.XAUUSD;
+  let total = 0, n = 0;
+  const rows = DRIVERS.map(([k, name, fn]) => {
+    const s = S[k]; if (!s) return `<tr><td>${name}</td><td colspan="5" class="hint">${st.live ? "Not found on your broker's symbol list" : "Connect MT5 for this driver; see the macro quotes beside this"}</td></tr>`;
+    const c = chg(s), t = h1trend(s), r = corr(gold, s), [g, txt] = c == null ? [0,"—"] : fn(c);
+    if (c != null){ total += g; n++; }
+    return `<tr><td>${name}<div class="hint">${esc(s.sym)}</div></td><td class="r mono">${fx((s.bid+s.ask)/2, s.digits)}</td><td class="r mono ${cls(c)}">${c == null ? "—" : (c > 0 ? "+" : "") + fx(c,2) + "%"}</td>
+      <td><span class="dot ${tagCls(t)}"></span> ${t > 0 ? "Up" : t < 0 ? "Down" : "—"}</td><td class="r mono">${r == null ? "—" : fx(r,2)}</td><td><span class="bias-tag ${tagCls(g)}">${esc(txt)}</span></td></tr>`;
+  }).join("");
+  const c = goldCall(st, ((calSource(st) || {}).cal) || []);
+  $("#fund-src").textContent = M.src;
+  $("#fund-sum").innerHTML = `<h2 style="margin-bottom:6px">Gold call · economy + live market</h2>` + callBox(c);
+  $("#fund").innerHTML = `<div class="tbl"><table><thead><tr><th>Driver</th><th class="r">Price</th><th class="r">Today</th><th>H1 trend</th><th class="r">Corr. w/ gold</th><th>Gold effect</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ---------- Bias scorecard (manual) ---------- */
+const FACTORS = [
+  {id:"dxy",  name:"DXY trend",               opts:[["Falling",2],["Flat",0],["Rising",-2]], btc:1},
+  {id:"yld",  name:"US 10Y yields",           opts:[["Falling",1],["Flat",0],["Rising",-1]], btc:1},
+  {id:"news", name:"Latest high-impact data", opts:[["Gold-bullish",2],["None / in line",0],["Gold-bearish",-2]], btc:1},
+  {id:"fed",  name:"Fed tone",                opts:[["Dovish",1],["Neutral",0],["Hawkish",-1]], btc:1},
+  {id:"oil",  name:"Oil (USOIL)",             opts:[["Spiking",1],["Stable",0],["Falling",-1]], btc:0},
+  {id:"geo",  name:"Trump / geopolitics",     opts:[["Escalation, tariffs",2],["Quiet",0],["De-escalation, deals",-2]], btc:-0.5},
+  {id:"tech", name:"Chart trend (your TF)",   opts:[["Bullish",1],["Ranging",0],["Bearish",-1]], btc:0}
+];
+let bias = store.get("bias", {});
+function renderFactors(){
+  $("#factors").innerHTML = FACTORS.map(f => { const v = bias[f.id] ?? 0;
+    return `<div class="factor"><label for="f-${f.id}">${f.name}</label><select id="f-${f.id}">${f.opts.map(([l,s]) => `<option value="${s}" ${+s===+v?"selected":""}>${l}</option>`).join("")}</select><span class="sc ${cls(+v)}">${v>0?"+":""}${v}</span></div>`; }).join("");
+  FACTORS.forEach(f => $("#f-"+f.id).onchange = e => { bias[f.id] = +e.target.value; store.set("bias", bias); renderFactors(); });
+  const total = FACTORS.reduce((t,f) => t + (+bias[f.id] || 0), 0);
+  const word = total >= 5 ? "Strong buy gold" : total >= 2 ? "Lean buy gold" : total <= -5 ? "Strong sell gold" : total <= -2 ? "Lean sell gold" : "Neutral · wait";
+  $("#bias-word").textContent = word;
+  $("#bias-word").className = "big " + (total >= 2 ? "pos" : total <= -2 ? "neg" : "");
+  $("#bias-score").textContent = (total > 0 ? "+" : "") + total + " / 10";
+  $("#bias-needle").style.left = (50 + Math.max(-10, Math.min(10, total)) * 5) + "%";
+  const b = FACTORS.reduce((t,f) => t + (+bias[f.id] || 0) * f.btc, 0), bt = $("#btc-lean");
+  bt.textContent = b >= 2 ? "LEAN BUY" : b <= -2 ? "LEAN SELL" : "NEUTRAL";
+  bt.className = "bias-tag " + (b >= 2 ? "buy" : b <= -2 ? "sell" : "flat");
+}
+renderFactors();
+
+/* ---------- News impact calculator ---------- */
+const EVENTS = {
+  NFP:   {name:"Non-Farm Payrolls (NFP)", unit:"K", dir:1,  th:[30,80],   ex:[254,150,142]},
+  UR:    {name:"Unemployment Rate",       unit:"%", dir:-1, th:[0.1,0.2], ex:[4.1,4.2,4.2]},
+  CPI:   {name:"CPI m/m",                 unit:"%", dir:1,  th:[0.1,0.2], ex:[0.4,0.3,0.2]},
+  CCPI:  {name:"Core CPI m/m",            unit:"%", dir:1,  th:[0.1,0.2], ex:[0.3,0.3,0.3]},
+  PPI:   {name:"PPI m/m",                 unit:"%", dir:1,  th:[0.1,0.3], ex:[0.0,0.2,0.1]},
+  CPPI:  {name:"Core PPI m/m",            unit:"%", dir:1,  th:[0.1,0.3], ex:[0.1,0.2,0.1]},
+  CLAIMS:{name:"Initial Jobless Claims",  unit:"K", dir:-1, th:[10,25],   ex:[241,230,228]},
+  FOMC:  {name:"FOMC rate decision",      unit:"%", dir:1,  th:[0.01,0.25], ex:[4.25,4.25,4.25], tone:true},
+  PCE:   {name:"Core PCE m/m",            unit:"%", dir:1,  th:[0.1,0.2], ex:[0.2,0.3,0.2]},
+  RS:    {name:"Retail Sales m/m",        unit:"%", dir:1,  th:[0.3,0.8], ex:[0.4,0.3,0.2]},
+  ISM:   {name:"ISM PMI (Mfg / Services)",unit:"",  dir:1,  th:[1,3],     ex:[52.1,51.0,50.5]},
+  GDP:   {name:"GDP q/q (annualised)",    unit:"%", dir:1,  th:[0.3,0.8], ex:[2.8,2.5,2.4]},
+  JOLTS: {name:"JOLTS Job Openings",      unit:"M", dir:1,  th:[0.2,0.5], ex:[7.4,7.2,7.1]}
+};
+$("#ev").innerHTML = Object.entries(EVENTS).map(([k,e]) => `<option value="${k}">${e.name}</option>`).join("");
+/* accepts 0.3, 0.3%, -0.1 %, 150K, 1,250K, 7.2M */
+function num(sel){
+  const s = String($(sel).value || "").trim().replace(/,/g, "").replace(/[\u2212\u2013]/g, "-");
+  if (!s) return NaN;
+  const m = s.match(/^([+-]?\d*\.?\d+)\s*([%KkMm]?)$/);
+  return m ? parseFloat(m[1]) : NaN;
+}
+function unitLabel(e){ return e.unit === "%" ? "(%)" : e.unit === "K" ? "(K, thousands)" : e.unit === "M" ? "(M, millions)" : "(index)"; }
+function paintUnits(){ const e = EVENTS[$("#ev").value]; document.querySelectorAll(".ev-unit").forEach(x => x.textContent = unitLabel(e)); $("#ev-act").placeholder = "e.g. " + e.ex[0] + e.unit + " (blank before release)"; }
+$("#ev").onchange = () => { const e = EVENTS[$("#ev").value]; $("#ev-act").value = ""; $("#ev-fc").value = e.ex[1] + e.unit; $("#ev-prev").value = e.ex[2] + e.unit; $("#tone-wrap").hidden = !e.tone; paintUnits(); evalNews(); };
+paintUnits();
+["#ev-act","#ev-fc","#ev-prev","#ev-tone"].forEach(s => $(s).oninput = evalNews);
+let lastSignal = null;
+function evalNews(){
+  const key = $("#ev").value, e = EVENTS[key], act = num("#ev-act"), fc = num("#ev-fc");
+  const bad = ["#ev-fc","#ev-prev","#ev-act"].filter(s => $(s).value.trim() && isNaN(num(s)));
+  if (bad.length) { $("#ev-result").innerHTML = `<span class="hint">Type a number such as 0.3, 0.3%, -0.1% or 150K.</span>`; lastSignal = null; return; }
+  if (isNaN(fc)) { $("#ev-result").innerHTML = `<span class="hint">Enter the forecast and previous numbers.</span>`; lastSignal = null; return; }
+  if (isNaN(act)) { lastSignal = null; preRelease(e, fc, num("#ev-prev")); return; }
+  const dev = +(act - fc).toFixed(4); let usd, strength;
+  if (e.tone){ const tone = +$("#ev-tone").value, rate = dev >= 0.01 ? 2 : dev <= -0.01 ? -2 : 0; usd = rate + tone; strength = Math.abs(usd) >= 2 ? "strong" : Math.abs(usd) === 1 ? "moderate" : "none"; }
+  else { const a = Math.abs(dev); strength = a >= e.th[1] ? "strong" : a >= e.th[0] ? "moderate" : "none"; usd = strength === "none" ? 0 : Math.sign(dev) * e.dir * (strength === "strong" ? 2 : 1); }
+  const gold = usd > 0 ? "SELL" : usd < 0 ? "BUY" : "WAIT", btc = usd > 0 ? "bearish" : usd < 0 ? "bullish" : "no clear lean";
+  const why = usd === 0
+    ? (e.tone ? "Decision and tone are in line with expectations." : `The surprise of ${dev > 0 ? "+" : ""}${dev}${e.unit} is too small to move gold by itself.`)
+    : `${e.name} came in ${dev > 0 ? "above" : dev < 0 ? "below" : "at"} forecast${e.tone ? " with a " + $("#ev-tone").selectedOptions[0].text.toLowerCase() + " tone" : ""}, which is ${usd > 0 ? "USD-positive (higher yields, stronger dollar)" : "USD-negative (lower yields, weaker dollar)"}.`;
+  lastSignal = {key, name:e.name, act, fc, unit:e.unit, gold, strength, usd};
+  $("#ev-result").innerHTML = `<div class="head"><span class="big ${gold==="BUY"?"pos":gold==="SELL"?"neg":""}">${gold === "WAIT" ? "No trade signal" : gold + " XAUUSD"}</span>
+    <span class="bias-tag ${gold==="BUY"?"buy":gold==="SELL"?"sell":"flat"}">${strength === "none" ? "IN LINE" : strength.toUpperCase() + " SURPRISE"}</span></div>
+    <div class="hint" style="color:var(--fg)">${why}</div>
+    <div class="hint">DXY likely ${usd > 0 ? "▲" : usd < 0 ? "▼" : "flat"} · BTCUSD ${btc}${strength === "strong" ? " · expect a fast first move, wait for the M5 candle to close" : ""}</div>`;
+}
+/* Before the number prints: lean from forecast vs previous + live market, and the trigger levels */
+function preRelease(e, fc, prev){
+  const u = e.unit, d = u === "%" ? 2 : u === "" ? 1 : u === "M" ? 2 : 0;
+  const f = v => { const s = (+v).toFixed(d); return (s.includes(".") ? s.replace(/\.?0+$/, "") : s) + u; };
+  const R = [];
+  let exp = 0;
+  if (!isNaN(prev) && prev !== fc){
+    const usdUp = (fc > prev) === (e.dir > 0);
+    exp = usdUp ? -1 : 1;
+    R.push({ w: exp, src:"eco", txt:`Forecast ${f(fc)} vs previous ${f(prev)}: economists expect a ${usdUp ? "stronger" : "weaker"} dollar reading, ${usdUp ? "a mild headwind" : "mildly supportive"} for gold. Much of this is already in the price.` });
+  } else R.push({ w:0, src:"eco", txt: isNaN(prev) ? "Add the previous figure to compare it with the forecast." : `Forecast equals previous (${f(fc)}): no change expected, so only a surprise moves gold.` });
+  let mk = 0, st = null;
+  try { st = lastState; } catch(err){}   // not ready on first paint
+  if (st){
+    const c = goldCall(st, ((calSource(st) || {}).cal) || []);
+    c.R.filter(r => r.src === "mkt").forEach(r => R.push(r));
+    mk = Math.sign(c.mk);
+  }
+  if (!R.some(r => r.src === "mkt")) R.push({ w:0, src:"mkt", txt:"Live gold price not available, so the lean uses the forecast only" });
+  const lean = exp && mk && exp === mk ? (exp > 0 ? "BUY" : "SELL") : "WAIT";
+  // trigger levels
+  const t0 = e.th[0], t1 = e.th[1], up = e.dir > 0;
+  const hiM = fc + t0, hiS = fc + t1, loM = fc - t0, loS = fc - t1;
+  const rows = e.tone
+    ? [["Hike, or hold with hawkish tone", "SELL gold", "neg"], ["Hold, neutral tone", "WAIT", ""], ["Cut, or hold with dovish tone", "BUY gold", "pos"]]
+    : [[`${f(hiS)} or higher`, up ? "SELL gold · strong" : "BUY gold · strong", up ? "neg" : "pos"],
+       [`${f(hiM)} to ${f(hiS)}`, up ? "SELL gold" : "BUY gold", up ? "neg" : "pos"],
+       [`Between ${f(loM)} and ${f(hiM)}`, "WAIT · in line", ""],
+       [`${f(loS)} to ${f(loM)}`, up ? "BUY gold" : "SELL gold", up ? "pos" : "neg"],
+       [`${f(loS)} or lower`, up ? "BUY gold · strong" : "SELL gold · strong", up ? "pos" : "neg"]];
+  $("#ev-result").innerHTML = `<div class="head"><span class="big ${lean === "BUY" ? "pos" : lean === "SELL" ? "neg" : ""}">${lean === "WAIT" ? "WAIT for the number" : "Lean " + lean + " XAUUSD"}</span>
+      <span class="bias-tag ${lean === "BUY" ? "buy" : lean === "SELL" ? "sell" : "flat"}">BEFORE RELEASE · ${lean === "WAIT" ? "NO EDGE" : "LOW CONFIDENCE"}</span></div>
+    <ul class="notes reasons">${R.map(r => `<li><span class="arrow ${cls(r.w)}">${r.w > 0 ? "+" + r.w : r.w === 0 ? "·" : r.w}</span><span><span class="src-tag ${r.src}">${r.src === "eco" ? "Economy" : "Market"}</span>${esc(r.txt)}</span></li>`).join("")}</ul>
+    <h2 style="margin-top:6px">When the actual prints</h2>
+    <div class="tbl"><table><thead><tr><th>${e.tone ? "Fed outcome" : "Actual"}</th><th>Gold</th></tr></thead><tbody>${rows.map(([a,b,c]) => `<tr><td class="mono">${a}</td><td><b class="${c}">${b}</b></td></tr>`).join("")}</tbody></table></div>
+    <div class="hint">Pre-release leans are a guess: a lean only shows when the forecast and live gold agree. Safest: wait for the actual, type it in above, and trade after the first 1-minute candle closes.</div>`;
+}
+evalNews();
+let evLog = store.get("evlog", []);
+function renderEvLog(){
+  $("#tbl-ev").innerHTML = evLog.length
+    ? `<thead><tr><th>When</th><th>Event</th><th class="r">Actual</th><th class="r">Fcst</th><th>Gold</th><th></th></tr></thead><tbody>` +
+      evLog.map((r,i) => `<tr><td class="mono">${esc(r.when)}</td><td>${esc(r.name)}</td><td class="r mono">${r.act}${esc(r.unit)}</td><td class="r mono">${r.fc}${esc(r.unit)}</td><td><span class="bias-tag ${r.gold==="BUY"?"buy":r.gold==="SELL"?"sell":"flat"}">${r.gold}</span></td><td><button class="del" data-i="${i}" aria-label="Remove">×</button></td></tr>`).join("") + `</tbody>`
+    : `<tbody><tr><td><div class="empty">Results you log appear here so you can review how gold actually reacted.</div></td></tr></tbody>`;
+  document.querySelectorAll("#tbl-ev .del").forEach(b => b.onclick = () => { evLog.splice(+b.dataset.i,1); store.set("evlog", evLog); renderEvLog(); });
+}
+$("#ev-save").onclick = () => { if (!lastSignal){ $("#ev-act").focus(); return; }
+  evLog.unshift(Object.assign({when:new Date().toLocaleString("en-GB",{timeZone:"Asia/Singapore",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}, lastSignal));
+  evLog = evLog.slice(0, 40); store.set("evlog", evLog); renderEvLog(); };
+$("#ev-use").onclick = () => { if (!lastSignal){ $("#ev-act").focus(); return; }
+  bias.news = lastSignal.gold === "BUY" ? 2 : lastSignal.gold === "SELL" ? -2 : 0;
+  if (lastSignal.key === "FOMC") bias.fed = Math.max(-1, Math.min(1, -Math.sign(lastSignal.usd)));
+  store.set("bias", bias); renderFactors(); $("#h-bias").scrollIntoView({behavior:"smooth", block:"center"}); };
+renderEvLog();
+$("#tbl-rules").innerHTML = `<thead><tr><th>Release</th><th>Above forecast</th><th>Below forecast</th><th class="r">Big surprise</th></tr></thead><tbody>` +
+  Object.values(EVENTS).map(e => { const up = e.dir > 0 ? '<span class="neg">Sell gold</span>' : '<span class="pos">Buy gold</span>', dn = e.dir > 0 ? '<span class="pos">Buy gold</span>' : '<span class="neg">Sell gold</span>';
+    return `<tr><td>${e.name}</td><td>${e.tone ? "Hike / hawkish: " : ""}${up}</td><td>${e.tone ? "Cut / dovish: " : ""}${dn}</td><td class="r mono">${e.tone ? "any surprise" : "±" + e.th[1] + e.unit}</td></tr>`; }).join("") + `</tbody>`;
+
+/* ---------- Trump / geopolitics ---------- */
+const CATS = {
+  tariff:{name:"New tariffs / trade war",gold:"▲",btc:"▼",dxy:"mixed",oil:"▼",note:"Risk-off and growth fears. Gold bid as a safe haven; crypto and stocks usually sold."},
+  deal:{name:"Trade deal / tariff relief",gold:"▼",btc:"▲",dxy:"▲",oil:"▲",note:"Risk-on. Safe-haven gold loses bids; BTC and equities rally."},
+  fed:{name:"Pressure on Fed / rate-cut demands",gold:"▲",btc:"▲",dxy:"▼",oil:"–",note:"Questions Fed independence and points to lower rates. Dollar weakens, gold and BTC gain."},
+  war:{name:"Military / geopolitical escalation",gold:"▲",btc:"▼",dxy:"▲",oil:"▲",note:"Classic safe-haven move. Gold and oil up, BTC often dips first."},
+  peace:{name:"Ceasefire / peace talks",gold:"▼",btc:"▲",dxy:"–",oil:"▼",note:"Removes risk premium from gold and oil."},
+  oil:{name:"Sanctions / OPEC / oil comments",gold:"▲",btc:"–",dxy:"–",oil:"±",note:"Sanctions on producers lift oil; calls for OPEC to pump more push oil down. Gold follows the inflation angle."},
+  fiscal:{name:"Spending, debt, weak-dollar talk",gold:"▲",btc:"▲",dxy:"▼",oil:"–",note:"Fiscal worries and dollar-debasement talk support hard assets."},
+  crypto:{name:"Crypto policy / reserve news",gold:"–",btc:"▲",dxy:"–",oil:"–",note:"Direct BTC catalyst; little effect on gold."}
+};
+$("#tr-cat").innerHTML = Object.entries(CATS).map(([k,c]) => `<option value="${k}">${c.name}</option>`).join("");
+const ac = a => a === "▲" ? "pos" : a === "▼" ? "neg" : "";
+function trPreview(){ const c = CATS[$("#tr-cat").value];
+  $("#tr-preview").innerHTML = `<div class="head"><span class="mono">Gold <b class="${ac(c.gold)}">${c.gold}</b></span><span class="mono">BTC <b class="${ac(c.btc)}">${c.btc}</b></span><span class="mono">DXY <b>${c.dxy}</b></span><span class="mono">Oil <b>${c.oil}</b></span></div><div class="hint" style="color:var(--fg)">${c.note}</div>`; }
+$("#tr-cat").onchange = trPreview; trPreview();
+const nowInput = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+$("#tr-time").value = nowInput();
+let trLog = store.get("trlog", []);
+function renderTr(){
+  $("#tbl-tr").innerHTML = trLog.length
+    ? `<thead><tr><th>Time</th><th>Headline</th><th>Gold</th><th>BTC</th><th></th></tr></thead><tbody>` +
+      trLog.map((r,i) => { const c = CATS[r.cat]; return `<tr><td class="mono">${esc(r.time.replace("T"," "))}</td><td style="white-space:normal;min-width:180px">${esc(r.text)}<div class="hint">${c.name}</div></td><td class="${ac(c.gold)}">${c.gold}</td><td class="${ac(c.btc)}">${c.btc}</td><td><button class="del" data-i="${i}" aria-label="Remove">×</button></td></tr>`; }).join("") + `</tbody>`
+    : `<tbody><tr><td><div class="empty">No alerts yet. When a Trump post or geopolitical headline hits, add it here and the expected gold, BTC, DXY and oil reaction is filled in.</div></td></tr></tbody>`;
+  document.querySelectorAll("#tbl-tr .del").forEach(b => b.onclick = () => { trLog.splice(+b.dataset.i,1); store.set("trlog", trLog); renderTr(); });
+}
+$("#tr-add").onclick = () => { const text = $("#tr-text").value.trim(); if (!text){ $("#tr-text").focus(); return; }
+  trLog.unshift({ text, cat:$("#tr-cat").value, time:$("#tr-time").value || nowInput() }); trLog = trLog.slice(0,50); store.set("trlog", trLog);
+  $("#tr-text").value = ""; $("#tr-time").value = nowInput(); renderTr(); };
+renderTr();
+
+/* ---------- Lot size ---------- */
+let lastState = null;
+function fillRisk(){
+  const s = lastState && lastState.acct.symbols[$("#rk-sym").value]; if (!s) return;
+  const a = GD.atr(s.h1 || [], 14).at(-1) || 0, e = s.ask;
+  $("#rk-entry").value = e.toFixed(s.digits); $("#rk-sl").value = (e - a).toFixed(s.digits); $("#rk-tp").value = (e + 2*a).toFixed(s.digits);
+  calcRisk();
+}
+$("#rk-sym").onchange = () => { const s = lastState && lastState.acct.symbols[$("#rk-sym").value]; $("#rk-cs").value = s && s.contract ? s.contract : ($("#rk-sym").value === "XAUUSD" ? 100 : 1); fillRisk(); };
+["#rk-cs","#rk-bal","#rk-pct","#rk-entry","#rk-sl","#rk-tp"].forEach(s => $(s).oninput = calcRisk);
+function calcRisk(){
+  const cs = +$("#rk-cs").value, bal = +$("#rk-bal").value, pct = +$("#rk-pct").value, en = +$("#rk-entry").value, sl = +$("#rk-sl").value, tp = +$("#rk-tp").value;
+  const dist = Math.abs(en - sl), raw = dist && cs ? bal * pct / 100 / (dist * cs) : 0, lots = Math.floor(raw * 100) / 100;
+  const act = lots * dist * cs, reward = tp ? lots * Math.abs(tp - en) * cs : 0, rr = dist && tp ? Math.abs(tp - en) / dist : 0;
+  const side = sl < en ? "BUY" : sl > en ? "SELL" : "—", bad = tp && ((side === "BUY" && tp <= en) || (side === "SELL" && tp >= en));
+  $("#rk-out").innerHTML = [
+    ["Lot size", lots ? lots.toFixed(2) : "—", raw && !lots ? "Below 0.01 minimum" : `${side} · max at ${pct}% risk`],
+    ["Risk", money(act), `${bal ? fx(act / bal * 100, 2) : 0}% of balance`, "neg"],
+    ["Reward", bad ? "TP on wrong side" : money(reward), `R:R 1 : ${fx(rr,2)}`, bad ? "neg" : "pos"],
+    ["Stop distance", fx(dist, 2), `${money(cs)} per $1 move per lot`]
+  ].map(([l,v,s,c]) => `<div class="kpi"><label>${l}</label><span class="v ${c||""}">${v}</span><span class="s">${s}</span></div>`).join("");
+}
+
+/* ---------- Calendar: MT5 when connected, free weekly feed otherwise ---------- */
+let userActs = {};
+function calSource(st){
+  if (st && st.live && (st.acct.cal || []).length) return { cal: st.acct.cal, src: "Live from MT5 · actual numbers and gold signals fill in automatically", editable: false };
+  return null;
+}
+function renderCalArea(st){
+  const c = calSource(st), wrap = $("#cal-wrap");
+  if (!c){
+    wrap.hidden = true;
+    $("#next").innerHTML = isPhone ? "" : `<span class="hint">Live countdown to the next high-impact release appears here once MT5 is connected. The High-impact US news calendar on the left shows the schedule now.</span>`;
+    return;
+  }
+  wrap.hidden = false;
+  const list = $("#cal-med").checked ? c.cal : c.cal.filter(e => e.imp >= 3);
+  GD.renderCalendar($("#cal"), list, "gold", true, false);
+  GD.renderNext($("#next"), c.cal, true, "gold");
+  $("#cal-src").textContent = c.src;
+  GD.tickCountdowns();
+}
+try { $("#cal-med").checked = !!store.get("calMed", false); } catch(e){}
+$("#cal-med").onchange = e => { store.set("calMed", e.target.checked); if (lastState) renderCalArea(lastState); };
+
+/* ---------- News playbook (pre-release lean) ---------- */
+let leans = store.get("leans", {}), sound = store.get("sound", false), beeped = {};
+function evKey(e){ return e.key || ("mt5:" + e.id + ":" + e.t); }
+function preLean(e, cal, st){
+  const r = GD.ruleFor(e), now = GD.nowS(), R = []; let score = 0;
+  if (!r) return { score:0, word:"WAIT", conf:"No rule", reasons:[{w:0, txt:"No historical rule for this release. Wait for the number."}] };
+  // 1. earlier releases of the same kind in the last 7 days
+  const same = cal.filter(x => x !== e && x.t < e.t && e.t - x.t < 7*86400 && x.act != null && GD.ruleFor(x) && GD.ruleFor(x).kind === r.kind)
+                  .map(x => [x, GD.judge(x)]).filter(([,j]) => j && j.usd);
+  if (same.length){
+    const g = Math.max(-2, Math.min(2, same.reduce((t,[,j]) => t - Math.sign(j.usd), 0)));
+    score += g;
+    R.push({ w:g, src:"eco", txt:`Earlier ${r.kind === "infl" ? "inflation" : r.kind === "labor" ? "jobs" : r.kind === "fed" ? "Fed" : "growth"} data this week: ` + same.map(([x,j]) => `${x.name} ${j.gold === "SELL" ? "beat (USD+)" : "missed (USD−)"}`).join(", ") });
+  } else R.push({ w:0, src:"eco", txt:"No related data earlier this week to lean on." });
+  // 2. gold and dollar into the release (needs MT5)
+  const M = market(st), S = M.S, x = S.XAUUSD;
+  if (M.real && x && x.m5 && x.m5.length > 30){
+    const c = GD.closes(x.m5), up = GD.ema(c,9).at(-1) > GD.ema(c,21).at(-1);
+    score += up ? 1 : -1; R.push({ w: up ? 1 : -1, src:"mkt", txt:`Gold drifting ${up ? "up" : "down"} into the release (M5 EMA 9 vs 21)` });
+  }
+  const d = S.USDX;
+  if (M.real && d && d.d1 && d.d1.length){
+    const ch = ((d.bid + d.ask)/2 - d.d1.at(-1)[1]) / d.d1.at(-1)[1] * 100;
+    if (Math.abs(ch) > 0.15){ const w = ch > 0 ? -1 : 1; score += w; R.push({ w, src:"mkt", txt:`Dollar ${ch > 0 ? "+" : ""}${fx(ch,2)}% today` }); }
+  }
+  // 3. what the forecast already prices in (information only)
+  if (e.fc != null && e.prev != null && e.fc !== e.prev){
+    const hotter = (e.fc > e.prev) === (r.dir > 0);
+    R.push({ w:0, src:"eco", txt:`Forecast ${GD.fmtVal(e,e.fc)} vs previous ${GD.fmtVal(e,e.prev)}: market already expects a ${hotter ? "USD-stronger" : "USD-weaker"} print, so only a surprise beyond the forecast moves gold.` });
+  }
+  const word = score >= 2 ? "BUY" : score <= -2 ? "SELL" : "WAIT";
+  return { score, word, conf: Math.abs(score) >= 3 ? "Moderate" : word === "WAIT" ? "No edge" : "Low", reasons: R };
+}
+function beep(){
+  try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), gn = a.createGain();
+    o.frequency.value = 880; o.connect(gn); gn.connect(a.destination); gn.gain.setValueAtTime(0.15, a.currentTime); o.start(); o.stop(a.currentTime + 0.5); } catch(e){}
+}
+$("#btn-sound").onclick = () => { sound = !sound; store.set("sound", sound); if (sound) beep(); paintSound(); };
+function paintSound(){ const b = $("#btn-sound"); b.setAttribute("aria-pressed", sound); b.textContent = sound ? "Sound alert on" : "Sound alert off"; }
+paintSound();
+function renderPlay(st){
+  const c = calSource(st), now = GD.nowS();
+  const cal = c ? c.cal : [];
+  // grade past leans
+  for (const e of cal){ const L = leans[evKey(e)]; if (L && L.result == null && e.act != null){ const j = GD.judge(e); if (j) L.result = j.gold; } }
+  store.set("leans", leans);
+  const graded = Object.values(leans).filter(L => L.result && L.word !== "WAIT" && L.result !== "WAIT");
+  const right = graded.filter(L => L.word === L.result).length;
+  $("#play-stats").textContent = graded.length ? `Pre-news lean right ${right} of ${graded.length} times` : "Accuracy record starts with the next release";
+  const e = cal.filter(x => x.imp >= 3 && x.t > now - 300).sort((a,b) => a.t - b.t)[0];
+  const panel = $("#play-panel");
+  if (!e){
+    panel.classList.remove("window");
+    const PM0 = market(st), x0 = PM0.real ? PM0.S.XAUUSD : null;
+    let lv0 = `<p class="hint">Waiting for live prices.</p>`;
+    if (x0 && x0.m1 && x0.m1.length > 20){
+      const w = x0.m1.slice(-15), hi = Math.max(...w.map(b => b[2])), lo = Math.min(...w.map(b => b[3])), a = GD.atr(x0.m1, 14).at(-1) || 0, dg = x0.digits;
+      lv0 = `<div class="lvl"><span>15-min range high</span><span class="mono">${fx(hi,dg)}</span><span class="pos">Buy stop above</span><span class="mono pos">${fx(hi + 0.5*a, dg)}</span>
+        <span>15-min range low</span><span class="mono">${fx(lo,dg)}</span><span class="neg">Sell stop below</span><span class="mono neg">${fx(lo - 0.5*a, dg)}</span></div>`;
+    }
+    $("#play").innerHTML = `<div class="play-grid">
+      <div class="play-box"><h3>Next high-impact release</h3><span class="big" style="font-size:20px">${c ? "None in the next days" : isPhone ? "See the news calendar" : "Connect MT5 for the countdown"}</span>
+        <span class="hint">${c ? "This panel switches to the 5-minute plan automatically before the next one." : isPhone ? "The High-impact US news calendar lists times in Singapore time. Check the Gold call here 5 minutes before a release." : "Without MT5 the schedule is in the High-impact US news calendar on the left. The 5-minute lean, countdown and sound alert need the MT5 calendar."}</span></div>
+      <div class="play-box" style="grid-column:span 2"><h3>Gold call now · economy + market</h3>${callBox(goldCall(st, cal))}</div>
+      <div class="play-box"><h3>Breakout levels</h3>${lv0}<p class="hint">Before a release, trade the break of the 15-minute range after the first 1-minute candle closes.</p></div>
+    </div>`;
+    return;
+  }
+  const k = evKey(e), dt = e.t - now, inWin = dt <= 300 && dt > 0, after = dt <= 0;
+  panel.classList.toggle("window", inWin);
+  const L = preLean(e, cal, st);
+  if (inWin && !leans[k]) { leans[k] = { name:e.name, t:e.t, word:L.word, score:L.score, conf:L.conf, reasons:L.reasons }; store.set("leans", leans); }
+  if (inWin && sound && !beeped[k]) { beeped[k] = true; beep(); setTimeout(beep, 700); }
+  const shown = leans[k] || L;   // once locked at T-5, keep the call that was made
+  // breakout levels from your MT5 price
+  const PM = market(st), x = PM.real ? PM.S.XAUUSD : null;
+  let lv = `<p class="hint">Waiting for live prices. Meanwhile: mark gold's high and low of the last 15 minutes before the release and use those.</p>`;
+  if (x && x.m1 && x.m1.length > 20){
+    const w = x.m1.slice(-15), hi = Math.max(...w.map(b => b[2])), lo = Math.min(...w.map(b => b[3])), a = GD.atr(x.m1, 14).at(-1) || 0, dg = x.digits;
+    lv = `<div class="lvl"><span>15-min range high</span><span class="mono">${fx(hi,dg)}</span><span class="pos">Buy stop above</span><span class="mono pos">${fx(hi + 0.5*a, dg)}</span>
+      <span>15-min range low</span><span class="mono">${fx(lo,dg)}</span><span class="neg">Sell stop below</span><span class="mono neg">${fx(lo - 0.5*a, dg)}</span>
+      <span>Range size</span><span class="mono">${fx(hi - lo, dg)}</span></div>${PM.proxy ? `<p class="hint">From ${PM.oanda ? "OANDA" : "the PAXG proxy"}. Shift these by the gap to your CPT Markets price before placing orders.</p>` : ""}`;
+  }
+  const j = after && e.act != null ? GD.judge(e) : null;
+  const status = after
+    ? (j ? `<span class="hint">Released: ${GD.fmtVal(e,e.act)} vs ${GD.fmtVal(e,e.fc)} forecast</span><span class="big ${j.gold === "BUY" ? "pos" : j.gold === "SELL" ? "neg" : ""}" style="font-size:20px">Data says: ${j.gold === "WAIT" ? "in line" : j.gold + " gold"}</span><span class="hint">Check the Gold call box: trade only when the market confirms.</span>`
+         : `<span class="big" style="color:var(--warn)">Released</span><span class="hint">Waiting for MT5 to publish the actual number.</span>`)
+    : `<span class="big mono" data-cd="${e.t}">—</span><span class="hint">${inWin ? "Decision window: the lean is now locked for the record." : "The lean locks 5 minutes before the release."}</span>`;
+  $("#play").innerHTML = `<div class="play-grid">
+    <div class="play-box"><h3>${GD.esc(e.name)} · ${GD.sg(e.t,{weekday:"short",hour:"2-digit",minute:"2-digit"})} SGT</h3>${status}
+      <span class="hint">Forecast ${GD.fmtVal(e,e.fc)} · Previous ${GD.fmtVal(e,e.prev)}</span><span class="hint">${GD.esc(GD.preGuide(e))}</span></div>
+    <div class="play-box"><h3>Pre-news lean</h3>
+      <div class="verdict"><span class="big ${shown.word === "BUY" ? "pos" : shown.word === "SELL" ? "neg" : ""}">${shown.word === "WAIT" ? "WAIT · no edge" : shown.word + " gold"}</span><span class="pill-score mono">${shown.score > 0 ? "+" : ""}${shown.score} · ${shown.conf || L.conf} confidence${leans[k] ? " · locked" : ""}</span></div>
+      <ul class="notes reasons">${(shown.reasons || L.reasons).map(r => `<li><span class="arrow ${cls(r.w)}">${r.w > 0 ? "+" + r.w : r.w === 0 ? "·" : r.w}</span><span>${r.src ? `<span class="src-tag ${r.src}">${r.src === "eco" ? "Economy" : "Market"}</span>` : ""}${GD.esc(r.txt)}</span></li>`).join("")}</ul></div>
+    <div class="play-box"><h3>Gold call now · economy + market</h3>${callBox(goldCall(st, cal))}</div>
+    <div class="play-box"><h3>Breakout plan</h3>${lv}
+      <p class="hint">Safer than guessing: let the number decide. Wait for the first 1-minute candle after the release to close, then trade the break of the range. Spreads widen in the first minute, so keep size small.</p></div>
+  </div>`;
+  GD.tickCountdowns();
+}
+setInterval(() => { if (lastState) renderPlay(lastState); }, 5000);
+
+/* ---------- Your account ---------- */
+/* Account number is remembered only in this browser (never in the page code, which is public on GitHub Pages) */
+let MY = store.get("myAccount", null);
+const isPhone = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) || (matchMedia("(pointer:coarse)").matches && !window.showOpenFilePicker);
+function paintBrand(){ $("#brand-sub").textContent = "XAUUSD · BTCUSD · MT5" + (MY ? ` account ${MY.login} · ${MY.company}` : ""); }
+paintBrand();
+function renderAccountId(st){
+  const a = st.acct, el = $("#acct-id"), warn = $("#acct-warn");
+  if (a.sample){
+    el.textContent = MY ? `${MY.login} · ${MY.company}` : "not connected";
+    warn.innerHTML = isPhone
+      ? `Your balance, P/L, lots and open trades are in the <b>MetaTrader 5 app</b> on this device. Everything else on GoldDesk works here: charts, news, gold signals and the lot calculator.`
+      : `Waiting for MT5. The figures below are <b>sample numbers, not your balance</b>. Attach GoldDesk_Exporter in MT5${MY ? ` while logged in to account ${MY.login}` : ""}, then click Connect MT5 file.`;
+    warn.hidden = false; return;
+  }
+  el.textContent = `${a.login} · ${a.company} · ${a.server}`;
+  if (!MY){ MY = { login: +a.login, company: a.company }; store.set("myAccount", MY); paintBrand(); }
+  if (+a.login !== MY.login){
+    warn.innerHTML = `This file is from account <b>${esc(a.login)}</b>, not your usual account ${MY.login}. <button class="btn" id="acct-switch">Make ${esc(a.login)} my account</button>`;
+    warn.hidden = false;
+    $("#acct-switch").onclick = () => { MY = { login: +a.login, company: a.company }; store.set("myAccount", MY); paintBrand(); renderAccountId(st); };
+  } else warn.hidden = true;
+}
+if (isPhone) { $("#btn-connect").hidden = true; }
+function phoneAccountView(st){
+  // On phone/iPad there is no MT5 exporter, so hide sample account figures entirely
+  const hide = isPhone && st.acct.sample;
+  $("#acct-kpis").hidden = hide;
+  const tables = $("#acct-kpis").nextElementSibling; if (tables) tables.hidden = hide;
+  $("#conn-pill").hidden = hide; $("#conn-time").hidden = hide;
+}
+
+/* ---------- MT5 web terminal (loads only when opened) ---------- */
+function mt5Url(){
+  const p = new URLSearchParams({ startup_version:"5", lang:"en", save_password:"off" });
+  if (MY && MY.login) p.set("login", String(MY.login));
+  return "https://metatraderweb.app/trade?" + p.toString();
+}
+$("#mt5-toggle").onclick = () => {
+  const wrap = $("#mt5-frame-wrap"), open = wrap.hidden;
+  wrap.hidden = !open;
+  $("#mt5-toggle").setAttribute("aria-expanded", open);
+  $("#mt5-toggle").textContent = open ? "Hide MT5 terminal" : "Log in to MT5";
+  if (open && !$("#mt5-frame iframe")){
+    const f = document.createElement("iframe");
+    f.src = mt5Url(); f.title = "MetaTrader 5 Web Terminal"; f.allow = "fullscreen; clipboard-write";
+    f.setAttribute("allowfullscreen", ""); f.style.cssText = "width:100%;height:100%;border:0;display:block";
+    $("#mt5-frame").appendChild(f);
+  }
+};
+$("#mt5-newtab").href = mt5Url();
+
+/* ---------- Live updates ---------- */
+function update(st){
+  lastState = st;
+  renderAccountId(st);
+  phoneAccountView(st);
+  paintSrc();
+  const S = st.acct.symbols || {}, M = market(st);
+  GD.renderTech($("#tech"), M.S.XAUUSD);
+  GD.renderLevels($("#levels"), M.S.XAUUSD);
+  $("#tech-src").textContent = M.src;
+  $("#lv-src").textContent = "Daily pivots from yesterday's candle · " + (st.live ? "MT5" : M.real ? "gold proxy" : "sample");
+  renderFund(st);
+  renderCalArea(st);
+  renderPlay(st);
+  if ($("#ev-act").value === "" && !["ev-fc","ev-prev","ev-act"].includes((document.activeElement || {}).id)) evalNews();
+  const rs = S[$("#rk-sym").value];
+  if (st.live && rs && rs.contract && document.activeElement !== $("#rk-cs")) $("#rk-cs").value = rs.contract;
+  if (!st.acct.sample && document.activeElement !== $("#rk-bal")) $("#rk-bal").value = (+st.acct.balance).toFixed(2);
+  if (!$("#rk-entry").value) fillRisk();
+  calcRisk();
+  GD.tickCountdowns();
+}
+GD.init(update);
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

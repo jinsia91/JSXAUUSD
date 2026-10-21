@@ -177,6 +177,10 @@ input,select,textarea{background:#000!important;color:var(--fg)}
 .top3 .play-grid{grid-template-columns:minmax(0,1fr)!important}
 .top3 .play-box{grid-column:auto!important}
 @media (max-width:1150px){.top3{grid-template-columns:minmax(0,1fr);height:auto}.fill .tv{height:720px!important;flex:none}.fill-scroll{overflow:visible}}
+#tv-ta{height:440px}
+#ta-panel:fullscreen{height:100vh;padding:16px;background:var(--bg)}
+#ta-panel:fullscreen #tv-ta{height:auto;flex:1}
+@media (max-width:900px){#tv-ta{height:460px}}
 .cal-wrap{display:grid;gap:8px}
 .cal-wrap[hidden],[hidden]{display:none!important}
 .src-tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-right:6px;color:var(--muted)}
@@ -208,11 +212,12 @@ input,select,textarea{background:#000!important;color:var(--fg)}
   <!-- NEWS SIGNAL + FUNDAMENTALS -->
   <div class="grid g-2">
     <section class="panel" aria-labelledby="h-calc">
-      <div class="panel-head"><h2 id="h-calc">News impact → gold signal</h2><span class="hint">Enter the release as it prints</span></div>
+      <div class="panel-head"><h2 id="h-calc">News impact → gold signal</h2><span class="hint">Before release: forecast + previous · After: add actual</span></div>
       <div class="row">
         <div class="field"><label for="ev">Event</label><select id="ev"></select></div>
-        <div class="field"><label for="ev-act">Actual</label><input type="number" step="any" id="ev-act" value="254"></div>
-        <div class="field"><label for="ev-fc">Forecast</label><input type="number" step="any" id="ev-fc" value="150"></div>
+        <div class="field"><label for="ev-fc">Forecast <span class="ev-unit"></span></label><input type="text" inputmode="decimal" autocomplete="off" id="ev-fc" value="150K"></div>
+        <div class="field"><label for="ev-prev">Previous <span class="ev-unit"></span></label><input type="text" inputmode="decimal" autocomplete="off" id="ev-prev" value="142K"></div>
+        <div class="field"><label for="ev-act">Actual <span class="ev-unit"></span></label><input type="text" inputmode="decimal" autocomplete="off" id="ev-act" placeholder="Blank before release"></div>
         <div class="field" id="tone-wrap" hidden><label for="ev-tone">Powell / statement tone</label>
           <select id="ev-tone"><option value="1">Hawkish</option><option value="0" selected>Neutral</option><option value="-1">Dovish</option></select></div>
       </div>
@@ -340,12 +345,15 @@ input,select,textarea{background:#000!important;color:var(--fg)}
           <span>BTCUSD lean from the same drivers</span><span id="btc-lean" class="bias-tag flat">NEUTRAL</span>
         </div>
       </section>
-      <section class="panel">
-        <div class="panel-head"><h2>Technical gauge</h2><span class="hint" id="ta-label">XAUUSD</span></div>
-        <div class="tv tv-ta tradingview-widget-container" id="tv-ta"></div>
-      </section>
     </aside>
   </div>
+
+  <!-- TECHNICAL GAUGE (full width) -->
+  <section class="panel" id="ta-panel">
+    <div class="panel-head"><h2>Technical gauge · oscillators, summary, moving averages</h2>
+      <div class="conn"><span class="hint" id="ta-label">XAUUSD</span><button class="btn primary" id="ta-full">Full screen</button></div></div>
+    <div class="tv tradingview-widget-container" id="tv-ta"></div>
+  </section>
 
   <!-- TECHNICAL -->
   <div class="grid g-2">
@@ -898,12 +906,17 @@ function renderMain(){
   $("#sel-tf").value = tf;
   tv("tv-main", "advanced-chart", chartCfg(symbol, tf, { withdateranges:true, studies:["STD;EMA","STD;RSI"] }));
   const taTf = {"5":"5m","15":"15m","60":"1h","240":"4h","D":"1D"}[tf] || "15m";
-  tv("tv-ta", "technical-analysis", Object.assign({}, TVB, { interval:taTf, width:"100%", height:"100%", symbol, showIntervalTabs:true, displayMode:"single" }));
+  tv("tv-ta", "technical-analysis", Object.assign({}, TVB, { interval:taTf, width:"100%", height:"100%", symbol, showIntervalTabs:true, displayMode: innerWidth >= 900 ? "multiple" : "single" }));
   $("#ta-label").textContent = (curSym === "XAU" ? "XAUUSD" : "BTCUSD") + " · " + $("#sel-tf").selectedOptions[0].text;
 }
 $("#sym-xau").onclick = () => { curSym = "XAU"; store.set("sym", curSym); renderMain(); };
 $("#sym-btc").onclick = () => { curSym = "BTC"; store.set("sym", curSym); renderMain(); };
 $("#sel-feed").onchange = e => { feedChoice[curSym] = e.target.value; store.set("feed", feedChoice); renderMain(); };
+$("#ta-full").onclick = async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await $("#ta-panel").requestFullscreen(); }
+  catch(e){ $("#ta-panel").scrollIntoView({ behavior:"smooth", block:"start" }); }
+};
+document.addEventListener("fullscreenchange", () => { $("#ta-full").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; });
 $("#sel-tf").onchange = e => { tf = e.target.value; store.set("tf", tf); renderMain(); };
 renderMain();
 function paintLayout(){
@@ -1079,27 +1092,40 @@ renderFactors();
 
 /* ---------- News impact calculator ---------- */
 const EVENTS = {
-  NFP:   {name:"Non-Farm Payrolls (NFP)", unit:"K", dir:1,  th:[30,80],   ex:[254,150]},
-  UR:    {name:"Unemployment Rate",       unit:"%", dir:-1, th:[0.1,0.2], ex:[4.1,4.2]},
-  CPI:   {name:"CPI m/m",                 unit:"%", dir:1,  th:[0.1,0.2], ex:[0.4,0.3]},
-  CCPI:  {name:"Core CPI m/m",            unit:"%", dir:1,  th:[0.1,0.2], ex:[0.3,0.3]},
-  PPI:   {name:"PPI m/m",                 unit:"%", dir:1,  th:[0.1,0.3], ex:[0.0,0.2]},
-  CPPI:  {name:"Core PPI m/m",            unit:"%", dir:1,  th:[0.1,0.3], ex:[0.1,0.2]},
-  CLAIMS:{name:"Initial Jobless Claims",  unit:"K", dir:-1, th:[10,25],   ex:[241,230]},
-  FOMC:  {name:"FOMC rate decision",      unit:"%", dir:1,  th:[0.01,0.25], ex:[4.25,4.25], tone:true},
-  PCE:   {name:"Core PCE m/m",            unit:"%", dir:1,  th:[0.1,0.2], ex:[0.2,0.3]},
-  RS:    {name:"Retail Sales m/m",        unit:"%", dir:1,  th:[0.3,0.8], ex:[0.4,0.3]},
-  ISM:   {name:"ISM PMI (Mfg / Services)",unit:"",  dir:1,  th:[1,3],     ex:[52.1,51.0]},
-  GDP:   {name:"GDP q/q (annualised)",    unit:"%", dir:1,  th:[0.3,0.8], ex:[2.8,2.5]},
-  JOLTS: {name:"JOLTS Job Openings",      unit:"M", dir:1,  th:[0.2,0.5], ex:[7.4,7.2]}
+  NFP:   {name:"Non-Farm Payrolls (NFP)", unit:"K", dir:1,  th:[30,80],   ex:[254,150,142]},
+  UR:    {name:"Unemployment Rate",       unit:"%", dir:-1, th:[0.1,0.2], ex:[4.1,4.2,4.2]},
+  CPI:   {name:"CPI m/m",                 unit:"%", dir:1,  th:[0.1,0.2], ex:[0.4,0.3,0.2]},
+  CCPI:  {name:"Core CPI m/m",            unit:"%", dir:1,  th:[0.1,0.2], ex:[0.3,0.3,0.3]},
+  PPI:   {name:"PPI m/m",                 unit:"%", dir:1,  th:[0.1,0.3], ex:[0.0,0.2,0.1]},
+  CPPI:  {name:"Core PPI m/m",            unit:"%", dir:1,  th:[0.1,0.3], ex:[0.1,0.2,0.1]},
+  CLAIMS:{name:"Initial Jobless Claims",  unit:"K", dir:-1, th:[10,25],   ex:[241,230,228]},
+  FOMC:  {name:"FOMC rate decision",      unit:"%", dir:1,  th:[0.01,0.25], ex:[4.25,4.25,4.25], tone:true},
+  PCE:   {name:"Core PCE m/m",            unit:"%", dir:1,  th:[0.1,0.2], ex:[0.2,0.3,0.2]},
+  RS:    {name:"Retail Sales m/m",        unit:"%", dir:1,  th:[0.3,0.8], ex:[0.4,0.3,0.2]},
+  ISM:   {name:"ISM PMI (Mfg / Services)",unit:"",  dir:1,  th:[1,3],     ex:[52.1,51.0,50.5]},
+  GDP:   {name:"GDP q/q (annualised)",    unit:"%", dir:1,  th:[0.3,0.8], ex:[2.8,2.5,2.4]},
+  JOLTS: {name:"JOLTS Job Openings",      unit:"M", dir:1,  th:[0.2,0.5], ex:[7.4,7.2,7.1]}
 };
 $("#ev").innerHTML = Object.entries(EVENTS).map(([k,e]) => `<option value="${k}">${e.name}</option>`).join("");
-$("#ev").onchange = () => { const e = EVENTS[$("#ev").value]; $("#ev-act").value = e.ex[0]; $("#ev-fc").value = e.ex[1]; $("#tone-wrap").hidden = !e.tone; evalNews(); };
-["#ev-act","#ev-fc","#ev-tone"].forEach(s => $(s).oninput = evalNews);
+/* accepts 0.3, 0.3%, -0.1 %, 150K, 1,250K, 7.2M */
+function num(sel){
+  const s = String($(sel).value || "").trim().replace(/,/g, "").replace(/[\u2212\u2013]/g, "-");
+  if (!s) return NaN;
+  const m = s.match(/^([+-]?\d*\.?\d+)\s*([%KkMm]?)$/);
+  return m ? parseFloat(m[1]) : NaN;
+}
+function unitLabel(e){ return e.unit === "%" ? "(%)" : e.unit === "K" ? "(K, thousands)" : e.unit === "M" ? "(M, millions)" : "(index)"; }
+function paintUnits(){ const e = EVENTS[$("#ev").value]; document.querySelectorAll(".ev-unit").forEach(x => x.textContent = unitLabel(e)); $("#ev-act").placeholder = "e.g. " + e.ex[0] + e.unit + " (blank before release)"; }
+$("#ev").onchange = () => { const e = EVENTS[$("#ev").value]; $("#ev-act").value = ""; $("#ev-fc").value = e.ex[1] + e.unit; $("#ev-prev").value = e.ex[2] + e.unit; $("#tone-wrap").hidden = !e.tone; paintUnits(); evalNews(); };
+paintUnits();
+["#ev-act","#ev-fc","#ev-prev","#ev-tone"].forEach(s => $(s).oninput = evalNews);
 let lastSignal = null;
 function evalNews(){
-  const key = $("#ev").value, e = EVENTS[key], act = parseFloat($("#ev-act").value), fc = parseFloat($("#ev-fc").value);
-  if (isNaN(act) || isNaN(fc)) { $("#ev-result").innerHTML = `<span class="hint">Enter the actual and forecast numbers.</span>`; lastSignal = null; return; }
+  const key = $("#ev").value, e = EVENTS[key], act = num("#ev-act"), fc = num("#ev-fc");
+  const bad = ["#ev-fc","#ev-prev","#ev-act"].filter(s => $(s).value.trim() && isNaN(num(s)));
+  if (bad.length) { $("#ev-result").innerHTML = `<span class="hint">Type a number such as 0.3, 0.3%, -0.1% or 150K.</span>`; lastSignal = null; return; }
+  if (isNaN(fc)) { $("#ev-result").innerHTML = `<span class="hint">Enter the forecast and previous numbers.</span>`; lastSignal = null; return; }
+  if (isNaN(act)) { lastSignal = null; preRelease(e, fc, num("#ev-prev")); return; }
   const dev = +(act - fc).toFixed(4); let usd, strength;
   if (e.tone){ const tone = +$("#ev-tone").value, rate = dev >= 0.01 ? 2 : dev <= -0.01 ? -2 : 0; usd = rate + tone; strength = Math.abs(usd) >= 2 ? "strong" : Math.abs(usd) === 1 ? "moderate" : "none"; }
   else { const a = Math.abs(dev); strength = a >= e.th[1] ? "strong" : a >= e.th[0] ? "moderate" : "none"; usd = strength === "none" ? 0 : Math.sign(dev) * e.dir * (strength === "strong" ? 2 : 1); }
@@ -1113,6 +1139,43 @@ function evalNews(){
     <div class="hint" style="color:var(--fg)">${why}</div>
     <div class="hint">DXY likely ${usd > 0 ? "▲" : usd < 0 ? "▼" : "flat"} · BTCUSD ${btc}${strength === "strong" ? " · expect a fast first move, wait for the M5 candle to close" : ""}</div>`;
 }
+/* Before the number prints: lean from forecast vs previous + live market, and the trigger levels */
+function preRelease(e, fc, prev){
+  const u = e.unit, d = u === "%" ? 2 : u === "" ? 1 : u === "M" ? 2 : 0;
+  const f = v => { const s = (+v).toFixed(d); return (s.includes(".") ? s.replace(/\.?0+$/, "") : s) + u; };
+  const R = [];
+  let exp = 0;
+  if (!isNaN(prev) && prev !== fc){
+    const usdUp = (fc > prev) === (e.dir > 0);
+    exp = usdUp ? -1 : 1;
+    R.push({ w: exp, src:"eco", txt:`Forecast ${f(fc)} vs previous ${f(prev)}: economists expect a ${usdUp ? "stronger" : "weaker"} dollar reading, ${usdUp ? "a mild headwind" : "mildly supportive"} for gold. Much of this is already in the price.` });
+  } else R.push({ w:0, src:"eco", txt: isNaN(prev) ? "Add the previous figure to compare it with the forecast." : `Forecast equals previous (${f(fc)}): no change expected, so only a surprise moves gold.` });
+  let mk = 0, st = null;
+  try { st = lastState; } catch(err){}   // not ready on first paint
+  if (st){
+    const c = goldCall(st, ((calSource(st) || {}).cal) || []);
+    c.R.filter(r => r.src === "mkt").forEach(r => R.push(r));
+    mk = Math.sign(c.mk);
+  }
+  if (!R.some(r => r.src === "mkt")) R.push({ w:0, src:"mkt", txt:"Live gold price not available, so the lean uses the forecast only" });
+  const lean = exp && mk && exp === mk ? (exp > 0 ? "BUY" : "SELL") : "WAIT";
+  // trigger levels
+  const t0 = e.th[0], t1 = e.th[1], up = e.dir > 0;
+  const hiM = fc + t0, hiS = fc + t1, loM = fc - t0, loS = fc - t1;
+  const rows = e.tone
+    ? [["Hike, or hold with hawkish tone", "SELL gold", "neg"], ["Hold, neutral tone", "WAIT", ""], ["Cut, or hold with dovish tone", "BUY gold", "pos"]]
+    : [[`${f(hiS)} or higher`, up ? "SELL gold · strong" : "BUY gold · strong", up ? "neg" : "pos"],
+       [`${f(hiM)} to ${f(hiS)}`, up ? "SELL gold" : "BUY gold", up ? "neg" : "pos"],
+       [`Between ${f(loM)} and ${f(hiM)}`, "WAIT · in line", ""],
+       [`${f(loS)} to ${f(loM)}`, up ? "BUY gold" : "SELL gold", up ? "pos" : "neg"],
+       [`${f(loS)} or lower`, up ? "BUY gold · strong" : "SELL gold · strong", up ? "pos" : "neg"]];
+  $("#ev-result").innerHTML = `<div class="head"><span class="big ${lean === "BUY" ? "pos" : lean === "SELL" ? "neg" : ""}">${lean === "WAIT" ? "WAIT for the number" : "Lean " + lean + " XAUUSD"}</span>
+      <span class="bias-tag ${lean === "BUY" ? "buy" : lean === "SELL" ? "sell" : "flat"}">BEFORE RELEASE · ${lean === "WAIT" ? "NO EDGE" : "LOW CONFIDENCE"}</span></div>
+    <ul class="notes reasons">${R.map(r => `<li><span class="arrow ${cls(r.w)}">${r.w > 0 ? "+" + r.w : r.w === 0 ? "·" : r.w}</span><span><span class="src-tag ${r.src}">${r.src === "eco" ? "Economy" : "Market"}</span>${esc(r.txt)}</span></li>`).join("")}</ul>
+    <h2 style="margin-top:6px">When the actual prints</h2>
+    <div class="tbl"><table><thead><tr><th>${e.tone ? "Fed outcome" : "Actual"}</th><th>Gold</th></tr></thead><tbody>${rows.map(([a,b,c]) => `<tr><td class="mono">${a}</td><td><b class="${c}">${b}</b></td></tr>`).join("")}</tbody></table></div>
+    <div class="hint">Pre-release leans are a guess: a lean only shows when the forecast and live gold agree. Safest: wait for the actual, type it in above, and trade after the first 1-minute candle closes.</div>`;
+}
 evalNews();
 let evLog = store.get("evlog", []);
 function renderEvLog(){
@@ -1122,10 +1185,10 @@ function renderEvLog(){
     : `<tbody><tr><td><div class="empty">Results you log appear here so you can review how gold actually reacted.</div></td></tr></tbody>`;
   document.querySelectorAll("#tbl-ev .del").forEach(b => b.onclick = () => { evLog.splice(+b.dataset.i,1); store.set("evlog", evLog); renderEvLog(); });
 }
-$("#ev-save").onclick = () => { if (!lastSignal) return;
+$("#ev-save").onclick = () => { if (!lastSignal){ $("#ev-act").focus(); return; }
   evLog.unshift(Object.assign({when:new Date().toLocaleString("en-GB",{timeZone:"Asia/Singapore",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}, lastSignal));
   evLog = evLog.slice(0, 40); store.set("evlog", evLog); renderEvLog(); };
-$("#ev-use").onclick = () => { if (!lastSignal) return;
+$("#ev-use").onclick = () => { if (!lastSignal){ $("#ev-act").focus(); return; }
   bias.news = lastSignal.gold === "BUY" ? 2 : lastSignal.gold === "SELL" ? -2 : 0;
   if (lastSignal.key === "FOMC") bias.fed = Math.max(-1, Math.min(1, -Math.sign(lastSignal.usd)));
   store.set("bias", bias); renderFactors(); $("#h-bias").scrollIntoView({behavior:"smooth", block:"center"}); };
@@ -1379,6 +1442,7 @@ function update(st){
   renderFund(st);
   renderCalArea(st);
   renderPlay(st);
+  if ($("#ev-act").value === "" && !["ev-fc","ev-prev","ev-act"].includes((document.activeElement || {}).id)) evalNews();
   const rs = S[$("#rk-sym").value];
   if (st.live && rs && rs.contract && document.activeElement !== $("#rk-cs")) $("#rk-cs").value = rs.contract;
   if (!st.acct.sample && document.activeElement !== $("#rk-bal")) $("#rk-bal").value = (+st.acct.balance).toFixed(2);
